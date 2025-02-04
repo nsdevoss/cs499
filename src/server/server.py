@@ -1,50 +1,58 @@
-import socketserver
-import threading
-import datetime
+# server_camera.py (Runs on MacBook)
+import socket
+import cv2
+import pickle
+import struct
 
-class StreamRequestHandler(socketserver.BaseRequestHandler):
-    def handle(self):
-        print(f"Connection from: {self.client_address}")
-        
-        while True:
-            try:
-                data = self.request.recv(1024)
-                if not data:
-                    print(f"Connection closed: {self.client_address}")
+class StreamCameraServer:
+    def __init__(self, host="0.0.0.0", port=9000):
+        self.host = host
+        self.port = port
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind((self.host, self.port))
+        self.server_socket.listen(5)
+        print(f"Server listening on {self.host}:{self.port}")
+
+    def receive_video_stream(self):
+        conn, addr = self.server_socket.accept()
+        print(f"Connection from {addr}")
+
+        data = b""
+        payload_size = struct.calcsize("Q")
+
+        try:
+            while True:
+                while len(data) < payload_size:
+                    packet = conn.recv(4096)
+                    if not packet:
+                        return
+                    data += packet
+
+                packed_msg_size = data[:payload_size]
+                data = data[payload_size:]
+                msg_size = struct.unpack("Q", packed_msg_size)[0]
+
+                while len(data) < msg_size:
+                    data += conn.recv(4096)
+
+                frame_data = data[:msg_size]
+                data = data[msg_size:]
+
+                # Decode frame
+                frame = pickle.loads(frame_data)
+                frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+
+                cv2.imshow("Raspberry Pi Camera Stream", frame)
+                if cv2.waitKey(1) == ord("q"):
                     break
-                
-                message = data.decode('utf-8')
-                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"[{timestamp}] Message received from {self.client_address}: {message}")
-                
-            except ConnectionResetError:
-                print(f"Connection reset by peer: {self.client_address}")
-                break
-            except Exception as e:
-                print(f"Error: {e}")
-                break
 
-class StreamServer:
-    def __init__(self, host='0.0.0.0', port=9000):
-        self.server = socketserver.ThreadingTCPServer((host, port), StreamRequestHandler)
-        self.server_thread = threading.Thread(target=self.server.serve_forever, daemon=True)
-
-    def start(self):
-        print("Starting server...")
-        self.server_thread.start()
-        print(f"Server running on {self.server.server_address}")
-
-    def stop(self):
-        print("Stopping server...")
-        self.server.shutdown()
-        self.server.server_close()
-        print("Server stopped.")
+        except Exception as e:
+            print(f"Server error: {e}")
+        finally:
+            conn.close()
+            cv2.destroyAllWindows()
+            print("Connection closed.")
 
 if __name__ == "__main__":
-    server = StreamServer(port=9000)
-    try:
-        server.start()
-        while True:
-            pass
-    except KeyboardInterrupt:
-        server.stop()
+    server = StreamCameraServer()
+    server.receive_video_stream()
