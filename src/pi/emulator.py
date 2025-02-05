@@ -1,9 +1,12 @@
 import socket
 import time
 import cv2
+import os
 from src.utils import utils
 import pickle
 import struct
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
 
 class Emulator:
@@ -11,7 +14,8 @@ class Emulator:
         self.server_ip = server_ip
         self.server_port = server_port
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.video = cv2.VideoCapture(f'/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/videos/{video}.mp4')
+        video_path = os.path.join(ROOT_DIR, "assets/videos", f"{video}.mp4")
+        self.video = cv2.VideoCapture(video_path)
         self.connect_to_server()
 
     def connect_to_server(self):

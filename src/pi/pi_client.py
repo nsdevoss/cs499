@@ -3,6 +3,7 @@ import cv2
 import pickle
 import struct
 import time
+from src.utils import utils
 
 
 class RaspberryPiCameraClient:
@@ -53,7 +54,7 @@ class RaspberryPiCameraClient:
 
 
 if __name__ == "__main__":
-    SERVER_IP = "192.168.1.69"  # This needs to be the IP of the laptop
+    SERVER_IP = utils.get_ip_address()
     SERVER_PORT = 9000
 
     client = RaspberryPiCameraClient(SERVER_IP, SERVER_PORT)
