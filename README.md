@@ -8,22 +8,17 @@ It sends data and connects to the server exactly the same, this is useful if you
 To run the server on your machine use:
 > python main.py
 
-To run the server and the emulator on your machine use:
-> python main.py -e
-> 
-> or
-> 
-> python main.py --emulator
+**Arguments**
 
-To change the video the emulator plays use:
-> python main.py -e -v *video_name*
-> 
-> or
-> 
-> python main.py -e --video *video_name*
+`-e or --emulator`: Runs the emulator on your machine.
 
-Make sure that you are in the root directory to run `main.py` or if you aren't then make sure to pass the correct path to it.
+`-s or --single`: Runs the server on only one port and process
 
+`-v [video] or --video [video]`: Chooses what video will be displayed on the emulator
+
+*Make sure that you are in the root directory to run `main.py` or if you aren't then make sure to pass the correct path to the file.*
+
+***The Emulator functions exactly the same as the Raspberry PI. It sends the stream and connects to the socket the exact same way. Functional wise, they are the exact that the IP if the emulator is the same as the server, which is not important at all.***
 ## Running parts individually
 
 ### Running the server
