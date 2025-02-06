@@ -67,5 +67,5 @@ if __name__ == "__main__":
     SERVER_IP = utils.get_ip_address()
     SERVER_PORT = 9000
 
-    client = Emulator(SERVER_IP, SERVER_PORT)
+    client = Emulator(SERVER_IP, "rotate", SERVER_PORT)
     client.send_video()

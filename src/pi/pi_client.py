@@ -3,15 +3,14 @@ import cv2
 import pickle
 import struct
 import time
-from src.utils import utils
 
 
 class RaspberryPiCameraClient:
-    def __init__(self, server_ip, server_port):
+    def __init__(self, server_ip, server_port, camera_index: int):
         self.server_ip = server_ip
         self.server_port = server_port
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.video_capture = cv2.VideoCapture(0)
+        self.video_capture = cv2.VideoCapture(camera_index)
         self.connect_to_server()
 
     def connect_to_server(self):
@@ -54,8 +53,8 @@ class RaspberryPiCameraClient:
 
 
 if __name__ == "__main__":
-    SERVER_IP = utils.get_ip_address()
+    SERVER_IP = "192.168.45.1" # This needs to be the IP of the laptop (will fix later)
     SERVER_PORT = 9000
 
-    client = RaspberryPiCameraClient(SERVER_IP, SERVER_PORT)
+    client = RaspberryPiCameraClient(SERVER_IP, SERVER_PORT, 0)
     client.send_video_stream()
