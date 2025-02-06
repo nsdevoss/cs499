@@ -1,0 +1,14 @@
+Package        Version
+-------------- ---------
+decorator      5.1.1
+imageio        2.37.0
+imageio-ffmpeg 0.6.0
+moviepy        2.1.2
+numpy          2.0.2
+opencv-python  4.11.0.86
+pillow         10.4.0
+pip            21.2.4
+proglog        0.1.10
+python-dotenv  1.0.1
+setuptools     58.0.4
+tqdm           4.67.1
