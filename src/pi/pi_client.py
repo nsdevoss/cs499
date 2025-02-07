@@ -3,6 +3,7 @@ import cv2
 import pickle
 import struct
 import time
+import multiprocessing
 
 
 class RaspberryPiCameraClient:
@@ -17,7 +18,7 @@ class RaspberryPiCameraClient:
         while True:
             try:
                 self.client_socket.connect((self.server_ip, self.server_port))
-                print(f"Emulator Connected to socket")
+                print(f"Raspberry PI Connected to socket")
                 break
             except ConnectionRefusedError:
                 print("Connection refused Retrying...")
@@ -51,10 +52,25 @@ class RaspberryPiCameraClient:
         print("Client Connection closed.")
 
 
+def start_camera_stream(server_ip, port, camera_index):
+    client = RaspberryPiCameraClient(server_ip, port, camera_index)
+    if client.video_capture.isOpened():
+        client.send_video_stream()
+
 
 if __name__ == "__main__":
-    SERVER_IP = "192.168.45.1" # This needs to be the IP of the laptop (will fix later)
-    SERVER_PORT = 9000
+    SERVER_IP = "192.168.1.69" # This needs to be the IP of the laptop (will fix later)
 
-    client = RaspberryPiCameraClient(SERVER_IP, SERVER_PORT, 0)
-    client.send_video_stream()
+    cameras = [
+        {"camera_index": 0, "port": 9000},
+        {"camera_index": 2, "port": 9001},
+    ]
+
+    processes = []
+    for cam in cameras:
+        process = multiprocessing.Process(target=start_camera_stream, args=(SERVER_IP, cam["port"], cam["camera_index"]))
+        process.start()
+        processes.append(process)
+
+    for process in processes:
+        process.join()

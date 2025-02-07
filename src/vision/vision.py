@@ -18,7 +18,10 @@ TODO: Make a vision class that handles all of the calculations
                 calc.del()
 '''
 
-class Vision():
+
+class Vision:
     def __init__(self, frame):
         self.frame = frame
 
+    def export(self):
+        return cv2.Canny(self.frame, 10, 200)

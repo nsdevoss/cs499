@@ -47,8 +47,9 @@ class StreamCameraServer:
 
                     # Decode frame
                     frame = pickle.loads(frame_data)
-                    # frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+                    frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
                     obj = vision.Vision(frame)
+                    calc = obj.export()
 
                     if frame is None:
                         print("Warning: Received an empty or corrupted frame.")
