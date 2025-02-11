@@ -2,13 +2,15 @@ import socket
 import cv2
 import pickle
 import struct
+from multiprocessing import Queue
 from src.vision import vision
 
 
 class StreamCameraServer:
-    def __init__(self, host="0.0.0.0", port=9000):
+    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None):
         self.host = host
         self.port = port
+        self.frame_queue = frame_queue
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
@@ -49,13 +51,14 @@ class StreamCameraServer:
                     frame = pickle.loads(frame_data)
                     frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
                     obj = vision.Vision(frame)
-                    calc = obj.export()
 
                     if frame is None:
                         print("Warning: Received an empty or corrupted frame.")
                         continue
 
-                    cv2.imshow("Raspberry Pi Camera Stream", frame)
+                    if self.frame_queue is not None:
+                        self.frame_queue.put((self.port, frame))
+                    cv2.imshow("Raspberry PI feed", frame)
                     if cv2.waitKey(1) == ord("q"):
                         break
 
