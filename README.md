@@ -12,9 +12,9 @@ To run the server on your machine use:
 
 `-e or --emulator`: Runs the emulator on your machine.
 
-`-s or --single`: Runs the server on only one port and process
+`-s or --stitch`: If we want to run the stitching function or not.
 
-`-v [video] or --video [video]`: Chooses what video will be displayed on the emulator
+`-v [video] or --video [video]`: Chooses what video will be displayed on the emulator, you can pass 1 or 2 video names.
 
 *Make sure that you are in the root directory to run `main.py` or if you aren't then make sure to pass the correct path to the file.*
 

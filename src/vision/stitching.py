@@ -1,5 +1,8 @@
 import cv2
 
+# DO NOT pay attention to anything here yet
+# HUGE WIP, and it's something we don't really need, this was mainly for the coolness effect
+
 
 def find_keypoints_and_match(frame1, frame2):
     orb = cv2.ORB_create()
@@ -43,8 +46,8 @@ def frame_stitcher(frame_queue):
             e2 = cv2.getTickCount()
             print(f"Time elapsed: {(e2 - e1)/cv2.getTickFrequency()}")
             result_frame = cv2.drawMatches(frames[9001], kp1, frames[9000], kp2, matches[:10], None,
-                                           flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-            cv2.imshow("Stitched Video", result_frame)
+                                           flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)  # This is the frame with the feature matches
+            cv2.imshow("Feature Matches", result_frame)
 
             if cv2.waitKey(1) == ord("q"):
                 break
