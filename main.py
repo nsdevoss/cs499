@@ -6,8 +6,8 @@ from src.utils import utils
 from src.vision.stitching import frame_stitcher
 
 
-def start_server(port, frame_queue):
-    local_server = server.StreamCameraServer(port=port, frame_queue=frame_queue)
+def start_server(port, frame_queue, display):
+    local_server = server.StreamCameraServer(port=port, frame_queue=frame_queue, display=display)
     local_server.receive_video_stream()
 
 
@@ -31,14 +31,14 @@ Params:
 @stitch: If we want to run the stitch function on the frames, default false
 @video_names -> list[str]: Holds the names of the videos the emulator will play, default ["zoom_in"]
 """
-def main(use_emulator: bool, stitch: bool, video_names: list):
+def main(use_emulator: bool, stitch: bool, video_names: list, display: bool):
     ip_addr = utils.get_ip_address()
     print(f"IP Address: {ip_addr}")
 
     """
     frame_queue:
-    This is the thing we are using to extract each frame from the servers and be able to use them.
-    The queue is seen by both servers even thought they run on different processes and they each individually put their frames in this queue.
+    This is the thing we are using to extract each frame from the servers and be able to use them on different processes.
+    The queue is seen by both servers even though they run on different processes, they each individually put their frames in this queue.
     Here is an example of what the queue looks like when the servers send their frames:
             (9000, frame1),
             (9001, frame1),
@@ -58,7 +58,7 @@ def main(use_emulator: bool, stitch: bool, video_names: list):
 
     # Start the servers on their own processes
     for port in server_ports:
-        process = multiprocessing.Process(target=start_server, args=(port,frame_queue))
+        process = multiprocessing.Process(target=start_server, args=(port, frame_queue, display))
         process.start()
         server_processes.append(process)
 
@@ -101,13 +101,17 @@ if __name__ == "__main__":
         help="Run the emulated client instead of the Raspberry Pi Client if you have one connected."
     )
     parser.add_argument(
+        "-d", "--display", action="store_false",
+        help="This will disable display from the two cameras"
+    )
+    parser.add_argument(
         "-s", "--stitch", action="store_true",
         help="Will run the frame stitcher"
     )
     parser.add_argument(
-        "-v", "--video", nargs="+", type=str, default="zoom_out",
+        "-v", "--video", nargs="+", type=str, default=["zoom_out"],
         choices=["crystal", "cube", "emu", "fade_in", "heart", "rotate", "slide_down", "slide_right", "slide_up", "waltzer", "zoom_in", "zoom_out", "left", "right", "left_emu", "right_emu"],
         help="Choose what video will be played on the emulator"
     )
     args = parser.parse_args()
-    main(args.emulator, args.stitch, args.video)  # We actually call the function with the passed in command line arguments
+    main(args.emulator, args.stitch, args.video, args.display)  # We actually call the function with the passed in command line arguments

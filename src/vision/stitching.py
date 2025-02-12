@@ -21,11 +21,21 @@ def find_keypoints_and_match(frame1, frame2):
 
 
 def stitch_frames(frame1, frame2):
-    stitcher = cv2.Stitcher_create()
+    if frame1 is None or frame2 is None:
+        print("One of the frames is None, cannot stitch.")
+        return None
+
+    if frame1.size == 0 or frame2.size == 0:
+        print("One of the frames is empty, cannot stitch.")
+        return None
+
+    print(f"Frame 1 shape: {frame1.shape}, Frame 2 shape: {frame2.shape}")
+
+    stitcher = cv2.Stitcher_create(cv2.Stitcher_SCANS)
     status, stitched_frame = stitcher.stitch([frame1, frame2])
 
     if status != cv2.Stitcher_OK:
-        print("Error during stitching:", status)
+        print(f"Error during stitching: {status} (Probably not enough features detected)")
         return None
 
     return stitched_frame
@@ -38,16 +48,21 @@ def frame_stitcher(frame_queue):
         port, frame = frame_queue.get()
         frames[port] = frame
         if frames[9000] is not None and frames[9001] is not None:
+            kp1, kp2, matches = find_keypoints_and_match(frames[9000], frames[9001])
+
             e1 = cv2.getTickCount()
-            kp1, kp2, matches = find_keypoints_and_match(frames[9001], frames[9000])
-
-            stitched = stitch_frames(frames[9001], frames[9000])
-
+            stitched = stitch_frames(frames[9000], frames[9001])
             e2 = cv2.getTickCount()
-            print(f"Time elapsed: {(e2 - e1)/cv2.getTickFrequency()}")
-            result_frame = cv2.drawMatches(frames[9001], kp1, frames[9000], kp2, matches[:10], None,
+            print(f"Stitching time elapsed: {(e2 - e1)/cv2.getTickFrequency()}s")
+
+            if stitched is None:
+                print("Stitching failed, skipping this frame.")
+                continue
+
+            result_frame = cv2.drawMatches(frames[9000], kp1, frames[9001], kp2, matches[:10], None,
                                            flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)  # This is the frame with the feature matches
-            cv2.imshow("Feature Matches", result_frame)
+            cv2.imshow("Stitched image", stitched)
+            cv2.imshow("Features detected", result_frame)
 
             if cv2.waitKey(1) == ord("q"):
                 break

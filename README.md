@@ -12,9 +12,11 @@ To run the server on your machine use:
 
 `-e or --emulator`: Runs the emulator on your machine.
 
-`-s or --stitch`: If we want to run the stitching function or not.
+`-d or --display`: Will disable the camera feed display on the laptop. Default will display camera feed.
 
-`-v [video] or --video [video]`: Chooses what video will be displayed on the emulator, you can pass 1 or 2 video names.
+`-s or --stitch`: If we want to run the stitching function or not. Default will not run stitching.
+
+`-v [video] or --video [video]`: Chooses what video will be displayed on the emulator, you can pass 1 or 2 video names. Default is `"zoom_out"`
 
 *Make sure that you are in the root directory to run `main.py` or if you aren't then make sure to pass the correct path to the file.*
 

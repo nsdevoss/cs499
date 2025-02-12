@@ -5,6 +5,7 @@ import os
 from src.utils import utils
 import pickle
 import struct
+import ipaddress
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
@@ -30,15 +31,31 @@ class Emulator:
 
     def connect_to_server(self):
         """
-        Attempts to connect to the server
+        This is where we connect to the server and check if it is valid before trying
         """
         while True:
             try:
+                print(f"Emulator trying address: {self.server_ip} on {self.server_port}")
+
+                # Validate IP and Port
+                assert isinstance(self.server_port, int), f"Port must be an integer, got {type(self.server_port)}"
+                assert 1 <= self.server_port <= 65535, f"Port {self.server_port} is out of range"
+                ipaddress.ip_address(self.server_ip)  # Validate the IP format
+
+                while not is_port_open(self.server_ip, self.server_port):
+                    print(f"Port {self.server_port} not open yet, chill...")
+                    time.sleep(2)
+
                 self.client_socket.connect((self.server_ip, self.server_port))
-                print(f"Emulator Connected to socket")
+                print(f"Emulator: Connected to socket")
                 break
+
             except ConnectionRefusedError:
-                print("Connection refused Retrying...")
+                print("Emulator: Connection refused, retrying...")
+                time.sleep(3)
+
+            except OSError as e:
+                print(f"OSError: {e}, retrying...")
                 time.sleep(3)
 
     def send_video(self):
@@ -75,9 +92,15 @@ class Emulator:
                 print(f"Client error: {e}")
                 break
 
-        self.video.release()  # Release video because we are coders good at managing resources
+        self.video.release()  # Release video because we are good programmers and care about our resources
         self.client_socket.close()  # CLose connection to server
         print("Connection closed.")
+
+
+def is_port_open(ip, port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(2)
+        return sock.connect_ex((ip, port)) == 0
 
 
 if __name__ == "__main__":

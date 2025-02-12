@@ -16,10 +16,11 @@ Params:
 @frame_queue: This passes the frame queue (more on this in main.py and below)
 """
 class StreamCameraServer:
-    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None):
+    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None, display=True):
         self.host = host
         self.port = port
         self.frame_queue = frame_queue
+        self.display = display
         # Boilerplate socket stuff
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -72,9 +73,11 @@ class StreamCameraServer:
                     # We do this because when we get the frame out we will know where it came from
                     if self.frame_queue is not None:
                         self.frame_queue.put((self.port, frame))
-                    cv2.imshow("Raspberry PI feed", frame)
-                    if cv2.waitKey(1) == ord("q"):
-                        break
+
+                    if self.display:
+                        cv2.imshow("Raspberry PI feed", frame)
+                        if cv2.waitKey(1) == ord("q"):
+                            break
 
             except (ConnectionResetError, BrokenPipeError) as e:
                 print(f"Error: {e}. Client disconnected. Waiting for a new connection...")
