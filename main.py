@@ -4,6 +4,7 @@ from src.server import server
 from src.pi import emulator
 from src.utils import utils
 from src.vision.stitching import frame_stitcher
+from src.vision.vision import Vision
 
 
 def start_server(port, frame_queue, display):
@@ -52,35 +53,34 @@ def main(use_emulator: bool, stitch: bool, video_names: list, display: bool):
     ***** See stitching.frame_stitcher to see a good example on how to extract the frames from the queue. *****
     """
     frame_queue = multiprocessing.Queue()
+    vision_arguments = {"stitching": stitch}
     server_processes = []
-    stitcher_process = None
     server_ports = [9000, 9001]
 
+    vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments)  # This is the vision object, all it needs is the arguments and the frame queue
     # Start the servers on their own processes
     for port in server_ports:
-        process = multiprocessing.Process(target=start_server, args=(port, frame_queue, display))
+        process = multiprocessing.Process(target=start_server, args=(port, frame_queue, display), name=f"Server Process: {port}")
         process.start()
         server_processes.append(process)
 
-    # Example on how we can pass the frame queue into a function for extraction
-    if stitch:
-        stitcher_process = multiprocessing.Process(target=frame_stitcher, args=(frame_queue,))
-        stitcher_process.start()
+    vision_process = multiprocessing.Process(target=vision.start, args=())
+    vision_process.start()
 
     print("Server started...")
 
-    # Start the emulators on their own processes
+    # Start the emulators on their OWN processes
     if use_emulator:
         print("Running Emulated Client...")
         emulator_processes = []
         name_index = 0
         for port in server_ports:
             if len(video_names) == 1:
-                emulator_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, video_names[0], port))
+                emulator_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, video_names[0], port), name=f"Emulator: {port}")
                 emulator_process.start()
                 emulator_processes.append(emulator_process)
             else:
-                emulator_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, video_names[name_index], port))
+                emulator_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, video_names[name_index], port), name=f"Emulator: {port}r")
                 emulator_process.start()
                 emulator_processes.append(emulator_process)
                 name_index += 1
@@ -90,8 +90,7 @@ def main(use_emulator: bool, stitch: bool, video_names: list, display: bool):
     for process in server_processes:
         process.join()
 
-    if stitch:
-        stitcher_process.join()
+    vision_process.join()
 
 
 if __name__ == "__main__":

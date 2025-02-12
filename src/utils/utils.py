@@ -1,16 +1,5 @@
 import subprocess
-import os
-import moviepy.video.io.ImageSequenceClip
-
-
-def create_video(image_dir: str, video_name: str, fps=1):
-    images = [os.path.join(image_dir,img) for img in os.listdir(image_dir)]
-    images.sort()
-    for img in images:
-        print(f"{img}\n")
-    clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(images, fps=fps)
-    clip.write_videofile(video_name)
-
+from multiprocessing.queues import Queue
 
 def get_ip_address():
     try:

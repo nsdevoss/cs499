@@ -81,6 +81,7 @@ class Emulator:
                 size = struct.pack("Q", len(data))  # We get the size of the frame and add 8 bytes to the front b/c thats what the server just needs
 
                 self.client_socket.sendall(size + data)
+                del data
 
             except (BrokenPipeError, ConnectionResetError) as e:
                 print(f"Connection lost: {e}. Reconnecting...")

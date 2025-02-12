@@ -39,7 +39,8 @@ class CameraClient:
         while True:
             try:
                 while self.video_capture.isOpened():
-                    ret, frame = self.video_capture.read()  # ret is a bool that determines if the frame was read correctly or not, frame is the video frame
+                    # ret is a bool that determines if the frame was read correctly or not, frame is the video frame
+                    ret, frame = self.video_capture.read()
                     if not ret:
                         break
 
