@@ -18,6 +18,7 @@ Params:
 @server_ip: The IP address of your computer for the emulator to connect to
 @video: The video that will be played on the instance of the emulator.
 @server_port: The port that the emulator will attempt to connect to on the server
+@logger: The logger passed into here
 """
 class Emulator:
     def __init__(self, server_ip, video, server_port, logger=None):

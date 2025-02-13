@@ -15,6 +15,7 @@ Params:
 @server_ip: The IP address of your computer for the pi to connect to.
 @server_port: The port that the pi will attempt to connect to on the server.
 @camera_index: The index of the camera that will be used to send, the values are 0 and 2 for each camera, NOT 1!!!! (idk why but 1 doesn't work)
+@logger: The logger passed into here
 """
 
 class CameraClient:

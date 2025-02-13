@@ -17,6 +17,7 @@ Params:
 @host: This is who we are looking for, 0.0.0.0 just means that we are looking for any IP address on the network. You could change this to the client's IP address to directly look for them. (Plz don't do, default is fine)
 @port: The port we are opening up on this instance. Default doesn't mean anything since we handle all of this in main.py, I'm just too lazy to change the argument order
 @frame_queue: This passes the frame queue (more on this in main.py and below)
+@logger: The logger that is passed into here
 """
 class StreamCameraServer:
     def __init__(self, host="0.0.0.0", port=9000, frame_queue=None, display=True, logger=None):
