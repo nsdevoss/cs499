@@ -1,5 +1,12 @@
 import subprocess
-from multiprocessing.queues import Queue
+import tkinter as tk
+import gc
+import os
+import signal
+import zipfile
+
+MAX_QUEUE_SIZE = 10
+
 
 def get_ip_address():
     try:
@@ -18,3 +25,65 @@ def get_ip_address():
         print(f"Error retrieving IP: {e}")
     print("No IP Address Found")
     return "Unknown"
+
+
+# Zips all the current logs, we get the logs from main.py in logs_to_zip
+def zip_logs(start_time, logs: list):
+    if not logs:
+        return
+    zip_filename = os.path.join("./logs", f"{start_time}.zip")
+    try:
+        with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for log_file in logs:
+                log_path = os.path.join("./logs", log_file)
+                if os.path.exists(log_path):
+                    base_name = os.path.splitext(log_file)[0]
+
+                    zipf.write(log_path, os.path.basename(log_file))
+                    os.rename(log_path, f"./logs/{base_name}_latest.log")
+        print(f"Zipped logs: {logs}")
+
+    except Exception as e:
+        print(f"Error zipping: {e}")
+
+
+# Kills all the processes in main loop
+def kill_everything(start_time, logs: list):
+    print("Killing all processes...")
+    zip_logs(start_time, logs)
+    print("Zipped all current logs")
+    os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
+
+
+# Makes a little Tkinter widget to kill everything
+def create_killer(start_time, logs: list):
+    root = tk.Tk()
+    root.title("Control Panel")
+
+    kill_button = tk.Button(root, text="Kill Everything", command=lambda: kill_everything(start_time, logs), bg="red", fg="white")
+    kill_button.pack(pady=20, padx=20)
+
+    root.mainloop()
+
+
+
+
+
+################ Experimental, you can try to make it better ################
+
+def manage_queue(frame_queue):
+    """
+    This function continuously reads frames from the shared queue
+    and removes old frames when the queue reaches MAX_QUEUE_SIZE.
+    """
+    processed_frames = {}
+
+    while True:
+        port, frame = frame_queue.get()
+
+        processed_frames[port] = frame
+
+        if len(processed_frames) > MAX_QUEUE_SIZE:
+            oldest_port = list(processed_frames.keys())[0]
+            del processed_frames[oldest_port]
+            gc.collect()

@@ -31,9 +31,10 @@ class Vision:
                 {"stitch": False, "depth_perception": False, "object_detection": False, "etc.": False}
     @port: [not implemented] determines what port the data will be exported on.
     """
-    def __init__(self, frame_queue, action_arguments: dict, port=None):
+    def __init__(self, frame_queue, action_arguments: dict, server_logger, port=None):
         self.frame_queue = frame_queue
         self.action_arguments = action_arguments
+        self.server_logger = server_logger
 
     def start(self):
         for action in self.action_arguments:

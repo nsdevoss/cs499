@@ -3,17 +3,21 @@ import multiprocessing
 from src.server import server
 from src.pi import emulator
 from src.utils import utils
-from src.vision.stitching import frame_stitcher
 from src.vision.vision import Vision
+from src.server.logger import Logger
+from datetime import datetime
+
+MAX_QUEUE_SIZE = 10
+processes = []
 
 
-def start_server(port, frame_queue, display):
-    local_server = server.StreamCameraServer(port=port, frame_queue=frame_queue, display=display)
+def start_server(port, frame_queue, display, server_logger):
+    local_server = server.StreamCameraServer(port=port, frame_queue=frame_queue, display=display, logger=server_logger)
     local_server.receive_video_stream()
 
 
-def start_emulator(ip_addr, video, port=9000):
-    client = emulator.Emulator(ip_addr, video, port)
+def start_emulator(ip_addr, video, port, client_logger):
+    client = emulator.Emulator(ip_addr, video, port, logger=client_logger)
     client.send_video()
 
 
@@ -33,8 +37,17 @@ Params:
 @video_names -> list[str]: Holds the names of the videos the emulator will play, default ["zoom_in"]
 """
 def main(use_emulator: bool, stitch: bool, video_names: list, display: bool):
+    global processes
+    start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # Set up loggers and stuff
+    server_logger = Logger(name="ServerLogger", log_file="server.log")
+    client_logger = Logger(name="EmulatorLogger", log_file="emu_client.log")
+    logs_to_zip = ["server.log"]
     ip_addr = utils.get_ip_address()
-    print(f"IP Address: {ip_addr}")
+    vision_arguments = {"stitching": stitch}
+    for argument in vision_arguments:
+        server_logger.get_logger().info(f"Vision action {argument}: {vision_arguments[argument]}")
+    server_logger.get_logger().info(f"Got IP Address: {ip_addr}")
 
     """
     frame_queue:
@@ -53,44 +66,43 @@ def main(use_emulator: bool, stitch: bool, video_names: list, display: bool):
     ***** See stitching.frame_stitcher to see a good example on how to extract the frames from the queue. *****
     """
     frame_queue = multiprocessing.Queue()
-    vision_arguments = {"stitching": stitch}
-    server_processes = []
+
     server_ports = [9000, 9001]
+    vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments,
+                    server_logger=server_logger)  # This is the vision object, responsible for the calculations
 
-    vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments)  # This is the vision object, all it needs is the arguments and the frame queue
-    # Start the servers on their own processes
+    # HUGE memory optimization BUT it breaks stitching, so it will break anything reading from the frame_queue
+    # queue_manager_process = multiprocessing.Process(target=manage_queue, args=(frame_queue,))
+    # queue_manager_process.start()
+
     for port in server_ports:
-        process = multiprocessing.Process(target=start_server, args=(port, frame_queue, display), name=f"Server Process: {port}")
+        server_logger.get_logger().info("Starting server on port: {port}")
+        process = multiprocessing.Process(target=start_server, args=(port, frame_queue, display, server_logger),
+                                          name=f"Server Process: {port}")
         process.start()
-        server_processes.append(process)
+        processes.append(process)
 
-    vision_process = multiprocessing.Process(target=vision.start, args=())
+    vision_process = multiprocessing.Process(target=vision.start)
     vision_process.start()
+    processes.append(vision_process)
 
-    print("Server started...")
-
-    # Start the emulators on their OWN processes
     if use_emulator:
-        print("Running Emulated Client...")
-        emulator_processes = []
-        name_index = 0
-        for port in server_ports:
-            if len(video_names) == 1:
-                emulator_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, video_names[0], port), name=f"Emulator: {port}")
-                emulator_process.start()
-                emulator_processes.append(emulator_process)
-            else:
-                emulator_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, video_names[name_index], port), name=f"Emulator: {port}r")
-                emulator_process.start()
-                emulator_processes.append(emulator_process)
-                name_index += 1
-        for process in emulator_processes:
-            process.join()
+        logs_to_zip.append("emu_client.log")
+        server_logger.get_logger().info("Running Emulated Client...")
+        for idx, port in enumerate(server_ports):
+            video = video_names[min(idx, len(video_names) - 1)]
+            client_logger.get_logger().info(f"Starting emulator on: {port} with video: {video}")
+            emulator_process = multiprocessing.Process(target=start_emulator,
+                                                       args=(ip_addr, video, port, client_logger))
+            emulator_process.start()
+            processes.append(emulator_process)
 
-    for process in server_processes:
+    utils.create_killer(start_time=start_time, logs=logs_to_zip)  # Kill button that KILLS every process
+
+    for process in processes:
         process.join()
-
-    vision_process.join()
+    server_logger.get_logger().info(f"Joined vision process: {vision_process.pid}")
+    # queue_manager_process.join()
 
 
 if __name__ == "__main__":
@@ -113,4 +125,4 @@ if __name__ == "__main__":
         help="Choose what video will be played on the emulator"
     )
     args = parser.parse_args()
-    main(args.emulator, args.stitch, args.video, args.display)  # We actually call the function with the passed in command line arguments
+    main(args.emulator, args.stitch, args.video, args.display)  # We actually call the function with the passed in cli

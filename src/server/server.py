@@ -1,9 +1,12 @@
+import gc
+import os
+import signal
 import socket
 import cv2
 import pickle
 import struct
-from multiprocessing import Queue
-from src.vision import vision
+
+MAX_QUEUE_SIZE = 10
 
 """
 Server Class
@@ -16,23 +19,25 @@ Params:
 @frame_queue: This passes the frame queue (more on this in main.py and below)
 """
 class StreamCameraServer:
-    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None, display=True):
+    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None, display=True, logger=None):
         self.host = host
         self.port = port
         self.frame_queue = frame_queue
         self.display = display
+        self.logger = logger
         # Boilerplate socket stuff
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(5)
-        print(f"Server listening on {self.host}:{self.port}")
+        self.logger.get_logger().info(f"Listening on {self.host}:{self.port}")
 
     def receive_video_stream(self):
+        log_writer = self.logger.get_logger()
         while True:
-            print("Waiting for a connection...")
+            log_writer.info("Waiting for a connection...")
             conn, addr = self.server_socket.accept()
-            print(f"Connection from {addr}")
+            log_writer.info(f"Connection from {addr}")
 
             # This just makes an empty byte buffer for incoming data
             data = b""
@@ -66,7 +71,7 @@ class StreamCameraServer:
                     # obj = vision.Vision(frame)
 
                     if frame is None:
-                        print("Warning: Received an empty or corrupted frame.")
+                        log_writer.warning("Received an empty or corrupted frame.")
                         continue
 
                     # We input the frame into the frame queue along with its server port
@@ -79,16 +84,24 @@ class StreamCameraServer:
                         if cv2.waitKey(1) == ord("q"):
                             break
 
+                    del frame, frame_data
+                    gc.collect()
+
             except (ConnectionResetError, BrokenPipeError) as e:
-                print(f"Error: {e}. Client disconnected. Waiting for a new connection...")
+                log_writer.error(f"{e}. Client disconnected. Waiting for a new connection...")
 
             except Exception as e:
-                print(f"Server error: {e}")
+                log_writer.error(f"{e}")
 
             finally:
                 conn.close()
                 cv2.destroyAllWindows()
-                print("Connection closed.")
+                log_writer.info("Connection closed.")
+
+    # Need to find a way to use this, rn we just KILL everything
+    def shutdown(self):
+        self.logger.get_logger().info("Shutting down server")
+        os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
 
 
 if __name__ == "__main__":

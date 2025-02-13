@@ -18,9 +18,10 @@ Params:
 """
 
 class CameraClient:
-    def __init__(self, server_ip, server_port, camera_index: int):
+    def __init__(self, server_ip, server_port, camera_index: int, logger=None):
         self.server_ip = server_ip
         self.server_port = server_port
+        self.logger = logger
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.video_capture = cv2.VideoCapture(camera_index)  # Open the camera
         self.connect_to_server()
@@ -29,13 +30,14 @@ class CameraClient:
         while True:
             try:
                 self.client_socket.connect((self.server_ip, self.server_port))
-                print(f"Raspberry PI Connected to socket")
+                self.logger.get_logger().info(f"Raspberry PI Connected to socket")
                 break
             except ConnectionRefusedError:
-                print("Connection refused Retrying...")
+                self.logger.get_logger().error("Connection refused Retrying...")
                 time.sleep(3)
 
     def send_video_stream(self):
+        log_writer = self.logger.get_logger()
         while True:
             try:
                 while self.video_capture.isOpened():
@@ -44,24 +46,24 @@ class CameraClient:
                     if not ret:
                         break
 
-                    _, buffer = cv2.imencode('.jpg', frame)  # Encode the frame into a numpy array in the buffer
+                    _, buffer = cv2.imencode('.jpg', frame)  # Encode the frame into a numpy array into the buffer
                     data = pickle.dumps(buffer)  # Serialize the encoded frame
                     size = struct.pack("Q", len(data))  # Get the size of the frame to send
                     self.client_socket.sendall(size + data)  # Send it
 
             except (BrokenPipeError, ConnectionResetError) as e:
-                print(f"Connection lost: {e}, Reconnecting...")
+                log_writer.error(f"Connection lost: {e}, Reconnecting...")
                 self.client_socket.close()
                 self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.connect_to_server()
 
             except Exception as e:
-                print(f"Client error: {e}")
+                log_writer.error(f"Error: {e}")
                 break
 
         self.video_capture.release()
         self.client_socket.close()
-        print("Client Connection closed.")
+        log_writer.info("Client Connection closed.")
 
 
 def start_camera_stream(server_ip, port, camera_index):
@@ -71,7 +73,7 @@ def start_camera_stream(server_ip, port, camera_index):
 
 
 if __name__ == "__main__":
-    SERVER_IP = "192.168.1.69" # This needs to be the IP of the laptop (will fix hardcode later)
+    SERVER_IP = "192.168.1.69"  # This needs to be the IP of the laptop (will fix hardcode later)
 
     cameras = [
         {"camera_index": 0, "port": 9000},
