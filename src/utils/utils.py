@@ -31,6 +31,10 @@ def get_ip_address():
 def zip_logs(start_time, logs: list):
     if not logs:
         return
+
+    if not os.path.isdir("./logs"):
+        os.makedirs("./logs")
+
     zip_filename = os.path.join("./logs", f"{start_time}.zip")
     try:
         with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
