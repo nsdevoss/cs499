@@ -1,6 +1,7 @@
 import argparse
 import multiprocessing
 from src.server import server
+from src.server.config import Config
 from src.pi import emulator
 from src.utils import utils
 from src.vision.vision import Vision
@@ -21,6 +22,7 @@ def start_emulator(ip_addr, video, port, client_logger):
     client.send_video()
 
 
+
 """
 This is the big dog function where everything goes down.
 
@@ -36,14 +38,14 @@ Params:
 @stitch: If we want to run the stitch function on the frames, default false
 @video_names -> list[str]: Holds the names of the videos the emulator will play, default ["zoom_in"]
 """
-def main(use_emulator: bool, stitch: bool, video_names: list, display: bool):
+def main(use_emulator: bool, stitch: bool, video_names: list, display: bool, server_ports: list):
     global processes
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Set up loggers and stuff
     server_logger = Logger(name="ServerLogger", log_file="server.log")
-    client_logger = Logger(name="EmulatorLogger", log_file="emu_client.log")
+
     logs_to_zip = ["server.log"]
     ip_addr = utils.get_ip_address()
+
     vision_arguments = {"stitching": stitch}
     for argument in vision_arguments:
         server_logger.get_logger().info(f"Vision action {argument}: {vision_arguments[argument]}")
@@ -67,7 +69,6 @@ def main(use_emulator: bool, stitch: bool, video_names: list, display: bool):
     """
     frame_queue = multiprocessing.Queue()
 
-    server_ports = [9000, 9001]
     vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments,
                     server_logger=server_logger)  # This is the vision object, responsible for the calculations
 
@@ -87,8 +88,10 @@ def main(use_emulator: bool, stitch: bool, video_names: list, display: bool):
     processes.append(vision_process)
 
     if use_emulator:
+        client_logger = Logger(name="EmulatorLogger", log_file="emulator.log")
         logs_to_zip.append("emu_client.log")
         server_logger.get_logger().info("Running Emulated Client...")
+
         for idx, port in enumerate(server_ports):
             video = video_names[min(idx, len(video_names) - 1)]
             client_logger.get_logger().info(f"Starting emulator on: {port} with video: {video}")
@@ -125,4 +128,23 @@ if __name__ == "__main__":
         help="Choose what video will be played on the emulator"
     )
     args = parser.parse_args()
-    main(args.emulator, args.stitch, args.video, args.display)  # We actually call the function with the passed in cli
+
+    server_logger = Logger(name="ServerLogger", log_file="server.log")
+    Config.set_logger(server_logger)
+    Config.load_config()
+
+
+    # Function to get values with CLI override
+    def get_config_value(cli_value, config_key):
+        print(cli_value if cli_value is not None else Config.get(config_key))
+        return cli_value if cli_value is not None else Config.get(config_key)
+
+
+    # Use CLI arguments **if provided**, otherwise use config defaults
+    use_emulator = get_config_value(args.emulator, "use_emulator")
+    stitch = get_config_value(args.stitch, "stitch")
+    video_names = get_config_value(args.video, "video_names")
+    display = get_config_value(args.display, "display")
+    server_ports = Config.get("server_ports", [9000, 9001])  # No CLI option for this
+
+    main(use_emulator, stitch, video_names, display, server_ports)

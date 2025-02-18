@@ -1,0 +1,7 @@
+{
+    "server_ports": [9000, 9001],
+    "use_emulator": true,
+    "stitch": true,
+    "video_names": ["zoom_in", "left"],
+    "display": true
+}
