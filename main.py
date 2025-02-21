@@ -22,23 +22,12 @@ def start_emulator(ip_addr, video, port, client_logger):
     client.send_video()
 
 
+def start_vision_process(frame_queue, vision_arguments, server_logger):
+    vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments, server_logger=server_logger)
+    vision.start()
 
-"""
-This is the big dog function where everything goes down.
 
-How it all goes down:
-- Each server is ran on a different port AND on a different process.
-- We want to do this rather than a different thread because we need each server to process things individually (and because its easier).
-- Also each Client/Emulator is run on their own processes which makes more sense because we have two camera streams.
-- This function takes command line arguments to run.
-
-Params:
-***** All of the parameters here are from the command line arguments *****
-@use_emulator: This tells us if we are going to run the emulator or not, default false
-@stitch: If we want to run the stitch function on the frames, default false
-@video_names -> list[str]: Holds the names of the videos the emulator will play, default ["zoom_in"]
-"""
-def main(use_emulator: bool, stitch: bool, video_names: list, display: bool, server_ports: list):
+def main(use_emulator: bool, stitch: bool, compute_depth: bool, video_names: list, display: bool, server_ports: list):
     global processes
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     server_logger = Logger(name="ServerLogger", log_file="server.log")
@@ -46,50 +35,27 @@ def main(use_emulator: bool, stitch: bool, video_names: list, display: bool, ser
     logs_to_zip = ["server.log"]
     ip_addr = utils.get_ip_address()
 
-    vision_arguments = {"stitching": stitch}
+    vision_arguments = {"stitching": stitch, "depth_perception": compute_depth}
     for argument in vision_arguments:
         server_logger.get_logger().info(f"Vision action {argument}: {vision_arguments[argument]}")
     server_logger.get_logger().info(f"Got IP Address: {ip_addr}")
 
-    """
-    frame_queue:
-    This is the thing we are using to extract each frame from the servers and be able to use them on different processes.
-    The queue is seen by both servers even though they run on different processes, they each individually put their frames in this queue.
-    Here is an example of what the queue looks like when the servers send their frames:
-            (9000, frame1),
-            (9001, frame1),
-            (9000, frame2),
-            (9001, frame2),
-            (9001, frame3),
-            (9000, frame3)
-    Sometimes one server might send than the other for a few frames but it is not important.
-    
-    You can pass this queue into any function and extract the frames using their ports as indicators for where they came from.
-    ***** See stitching.frame_stitcher to see a good example on how to extract the frames from the queue. *****
-    """
     frame_queue = multiprocessing.Queue()
 
-    vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments,
-                    server_logger=server_logger)  # This is the vision object, responsible for the calculations
-
-    # HUGE memory optimization BUT it breaks stitching, so it will break anything reading from the frame_queue
-    # queue_manager_process = multiprocessing.Process(target=manage_queue, args=(frame_queue,))
-    # queue_manager_process.start()
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(frame_queue, vision_arguments, server_logger))
+    vision_process.start()
+    processes.append(vision_process)
 
     for port in server_ports:
-        server_logger.get_logger().info("Starting server on port: {port}")
+        server_logger.get_logger().info(f"Starting server on port: {port}")
         process = multiprocessing.Process(target=start_server, args=(port, frame_queue, display, server_logger),
                                           name=f"Server Process: {port}")
         process.start()
         processes.append(process)
 
-    vision_process = multiprocessing.Process(target=vision.start)
-    vision_process.start()
-    processes.append(vision_process)
-
     if use_emulator:
         client_logger = Logger(name="EmulatorLogger", log_file="emulator.log")
-        logs_to_zip.append("emu_client.log")
+        logs_to_zip.append("emulator.log")
         server_logger.get_logger().info("Running Emulated Client...")
 
         for idx, port in enumerate(server_ports):
@@ -100,51 +66,23 @@ def main(use_emulator: bool, stitch: bool, video_names: list, display: bool, ser
             emulator_process.start()
             processes.append(emulator_process)
 
-    utils.create_killer(start_time=start_time, logs=logs_to_zip)  # Kill button that KILLS every process
+    utils.create_killer(start_time=start_time, logs=logs_to_zip)
 
     for process in processes:
         process.join()
     server_logger.get_logger().info(f"Joined vision process: {vision_process.pid}")
-    # queue_manager_process.join()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-e", "--emulator", action="store_true",
-        help="Run the emulated client instead of the Raspberry Pi Client if you have one connected."
-    )
-    parser.add_argument(
-        "-d", "--display", action="store_false",
-        help="This will disable display from the two cameras"
-    )
-    parser.add_argument(
-        "-s", "--stitch", action="store_true",
-        help="Will run the frame stitcher"
-    )
-    parser.add_argument(
-        "-v", "--video", nargs="+", type=str, default=["zoom_out"],
-        choices=["crystal", "cube", "emu", "fade_in", "heart", "rotate", "slide_down", "slide_right", "slide_up", "waltzer", "zoom_in", "zoom_out", "left", "right", "left_emu", "right_emu"],
-        help="Choose what video will be played on the emulator"
-    )
-    args = parser.parse_args()
-
     server_logger = Logger(name="ServerLogger", log_file="server.log")
     Config.set_logger(server_logger)
     Config.load_config()
 
+    use_emulator = Config.get("use_emulator", False)
+    stitch = Config.get("stitch", False)
+    compute_depth = Config.get("compute_depth", False)
+    video_names = Config.get("video_names", ["zoom_out"])
+    display = Config.get("display", False)
+    server_ports = Config.get("server_ports", [9000, 9001])
 
-    # Function to get values with CLI override
-    def get_config_value(cli_value, config_key):
-        print(cli_value if cli_value is not None else Config.get(config_key))
-        return cli_value if cli_value is not None else Config.get(config_key)
-
-
-    # Use CLI arguments **if provided**, otherwise use config defaults
-    use_emulator = get_config_value(args.emulator, "use_emulator")
-    stitch = get_config_value(args.stitch, "stitch")
-    video_names = get_config_value(args.video, "video_names")
-    display = get_config_value(args.display, "display")
-    server_ports = Config.get("server_ports", [9000, 9001])  # No CLI option for this
-
-    main(use_emulator, stitch, video_names, display, server_ports)
+    main(use_emulator, stitch, compute_depth, video_names, display, server_ports)
