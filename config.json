@@ -1,5 +1,5 @@
 {
-    "use_emulator": true,
+    "use_emulator": false,
     "stitch": false,
     "compute_depth": false,
     "video_names": [

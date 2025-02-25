@@ -10,7 +10,7 @@ class Vision:
     Params:
     :param frame_queue: Frame queue containing frames from both cameras.
     :param action_arguments: Dictionary defining which functionalities to enable.
-                       {"stitch": False, "depth_perception": False}
+                            {"stitch": False, "depth_perception": False}
     :param server_logger: The server logger
     """
     def __init__(self, frame_queue, action_arguments: dict, server_logger, port=None):
