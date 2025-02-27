@@ -41,8 +41,8 @@ class DepthMap:
         plt.show()
 
 def main():
-    image_left = "/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/im0_chair.png"
-    image_right = "/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/im1_chair.png"
+    image_left = "/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/stereoLeft/imageL0.png"
+    image_right = "/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/stereoRight/imageR0.png"
 
     depth_obj = DepthMap(image_left, image_right)
     depth_obj.computeDepthMapSGBM()

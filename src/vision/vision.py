@@ -1,6 +1,6 @@
 import cv2
 from src.vision import stitching
-from src.vision.depth import DepthEstimator
+from src.vision.depth import compute_disparity
 
 
 class Vision:
@@ -18,8 +18,6 @@ class Vision:
         self.action_arguments = action_arguments
         self.server_logger = server_logger
         self.port = port
-
-        self.depth_estimator = DepthEstimator(baseline=0.1, focal_length=700)
 
     def start(self):
         for action in self.action_arguments:
@@ -39,11 +37,9 @@ class Vision:
 
             if frames[9000] is not None and frames[9001] is not None:
                 try:
-                    disparity = self.depth_estimator.compute_disparity(frames[9000], frames[9001])
-                    depth_map = self.depth_estimator.compute_depth(disparity)
+                    disparity = compute_disparity(frames[9000], frames[9001])
 
                     cv2.imshow("Disparity Map", (disparity / disparity.max() * 255).astype('uint8'))
-                    cv2.imshow("Depth Map", (depth_map / depth_map.max() * 255).astype('uint8'))
 
                     if cv2.waitKey(1) == ord("q"):
                         break

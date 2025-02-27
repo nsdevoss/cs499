@@ -49,7 +49,12 @@ class Config:
 
     @classmethod
     def get(cls, key, default=None):
-        if key not in cls._config_data:
+        keys = key.split('.')
+        value = cls._config_data
+        try:
+            for k in keys:
+                value = value[k]
+            return value
+        except (KeyError, TypeError):
             cls._logger.get_logger().warning(f"Config key '{key}' not found. Using default: {default}")
-        value = cls._config_data.get(key, default)
-        return value
+            return default

@@ -1,6 +1,31 @@
 import cv2
 import numpy as np
 
+
+def compute_disparity(left_frame, right_frame):
+    left_gray = cv2.cvtColor(left_frame, cv2.IMREAD_GRAYSCALE)
+    right_gray = cv2.cvtColor(right_frame, cv2.IMREAD_GRAYSCALE)
+
+    window_size = 7
+    min_disp = 16
+    nDispFactor = 14
+    num_disp = 16 * nDispFactor - min_disp
+
+    stereo = cv2.StereoSGBM_create(minDisparity=min_disp,
+                                   numDisparities=num_disp,
+                                   blockSize=window_size,
+                                   P1=8 * 3 * window_size ** 2,
+                                   P2=32 * 3 * window_size ** 2,
+                                   disp12MaxDiff=1,
+                                   uniquenessRatio=15,
+                                   speckleWindowSize=0,
+                                   speckleRange=2,
+                                   preFilterCap=63,
+                                   mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY)
+    disparity = stereo.compute(left_gray, right_gray).astype(np.float32) / 16.0
+    return disparity
+
+
 class DepthEstimator:
     def __init__(self, baseline, focal_length):
         self.baseline = baseline
@@ -15,13 +40,6 @@ class DepthEstimator:
             speckleRange=32,
             disp12MaxDiff=1
         )
-
-    def compute_disparity(self, left_frame, right_frame):
-        left_gray = cv2.cvtColor(left_frame, cv2.COLOR_BGR2GRAY)
-        right_gray = cv2.cvtColor(right_frame, cv2.COLOR_BGR2GRAY)
-
-        disparity = self.stereo.compute(left_gray, right_gray).astype(np.float32) / 16.0
-        return disparity
 
     def compute_depth(self, disparity_map):
         disparity_map[disparity_map == 0] = 1.0

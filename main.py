@@ -27,7 +27,7 @@ def start_vision_process(frame_queue, vision_arguments, server_logger):
     vision.start()
 
 
-def main(use_emulator: bool, stitch: bool, compute_depth: bool, video_names: list, display: bool, server_ports: list):
+def main(use_emulator: bool, stitch: bool, compute_depth: bool, video_names: list, display: bool, server_ports: list, fps: int):
     global processes
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     server_logger = Logger(name="ServerLogger", log_file="server.log")
@@ -79,10 +79,11 @@ if __name__ == "__main__":
     Config.load_config()
 
     use_emulator = Config.get("use_emulator", False)
-    stitch = Config.get("stitch", False)
-    compute_depth = Config.get("compute_depth", False)
-    video_names = Config.get("video_names", ["zoom_out"])
-    display = Config.get("display", False)
+    stitch = Config.get("vision_arguments.stitch", False)
+    compute_depth = Config.get("vision_arguments.compute_depth", False)
+    video_names = Config.get("video_arguments.video_names", ["zoom_out"])
+    display = Config.get("video_arguments.display", False)
     server_ports = Config.get("server_ports", [9000, 9001])
+    fps = Config.get("video_arguments.fps", 30)
 
-    main(use_emulator, stitch, compute_depth, video_names, display, server_ports)
+    main(use_emulator, stitch, compute_depth, video_names, display, server_ports, fps)

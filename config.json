@@ -1,9 +1,17 @@
 {
-    "use_emulator": false,
+  "use_emulator": true,
+  "server_ports": [9000, 9001],
+  "video_arguments": {
+    "video_names": [
+      "stereo/dog2/left",
+      "stereo/dog2/right"
+    ],
+    "display": true,
+    "fps": 30
+  },
+  "vision_arguments": {
     "stitch": false,
     "compute_depth": false,
-    "video_names": [
-        "zoom_out"
-    ],
-    "display": true
+    "calibration_file": ""
+  }
 }
