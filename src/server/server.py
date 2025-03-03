@@ -77,11 +77,13 @@ class StreamCameraServer:
 
                     # We input the frame into the frame queue along with its server port
                     # We do this because when we get the frame out we will know where it came from
+                    left_frame, right_frame = self.split_frame(frame)
                     if self.frame_queue is not None:
-                        self.frame_queue.put((self.port, frame))
+                        self.frame_queue.put((left_frame, right_frame))
 
                     if self.display:
-                        cv2.imshow("Raspberry PI feed", frame)
+                        cv2.imshow("Left Camera Feed", left_frame)
+                        cv2.imshow("Right Camera Feed", right_frame)
                         if cv2.waitKey(1) == ord("q"):
                             break
 
@@ -98,6 +100,13 @@ class StreamCameraServer:
                 conn.close()
                 cv2.destroyAllWindows()
                 log_writer.info("Connection closed.")
+
+    def split_frame(self, frame):
+        height, width, _ = frame.shape
+        half_width = width // 2
+        left_frame = frame[:, :half_width]
+        right_frame = frame[:, half_width:]
+        return left_frame, right_frame
 
     # Need to find a way to use this, rn we just KILL everything
     def shutdown(self):

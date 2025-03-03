@@ -25,11 +25,9 @@ while cap_right.isOpened() and cap_left.isOpened():
         print("Error: Couldn't read frames")
         break
 
-    # Convert to grayscale
     gray_right = cv2.cvtColor(frame_right, cv2.COLOR_BGR2GRAY)
     gray_left = cv2.cvtColor(frame_left, cv2.COLOR_BGR2GRAY)
 
-    # Undistort and rectify images
     rectified_right = cv2.remap(gray_right, stereoMapR_x, stereoMapR_y, cv2.INTER_LANCZOS4, cv2.BORDER_CONSTANT, 0)
     rectified_left = cv2.remap(gray_left, stereoMapL_x, stereoMapL_y, cv2.INTER_LANCZOS4, cv2.BORDER_CONSTANT, 0)
 
@@ -38,7 +36,6 @@ while cap_right.isOpened() and cap_left.isOpened():
     disparity_visual = cv2.normalize(disparity, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
     disparity_visual = np.uint8(disparity_visual)
 
-    # Show the images
     cv2.imshow("Left Camera", rectified_left)
     cv2.imshow("Right Camera", rectified_right)
     cv2.imshow("Depth Map", disparity_visual)
@@ -46,7 +43,6 @@ while cap_right.isOpened() and cap_left.isOpened():
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Release resources
 cap_right.release()
 cap_left.release()
 cv2.destroyAllWindows()

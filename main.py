@@ -16,18 +16,16 @@ def start_server(port, frame_queue, display, server_logger):
     local_server = server.StreamCameraServer(port=port, frame_queue=frame_queue, display=display, logger=server_logger)
     local_server.receive_video_stream()
 
-
 def start_emulator(ip_addr, video, port, client_logger):
     client = emulator.Emulator(ip_addr, video, port, logger=client_logger)
     client.send_video()
-
 
 def start_vision_process(frame_queue, vision_arguments, server_logger):
     vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments, server_logger=server_logger)
     vision.start()
 
 
-def main(use_emulator: bool, stitch: bool, compute_depth: bool, video_names: list, display: bool, server_ports: list, fps: int):
+def main(use_emulator: bool, stitch: bool, compute_depth: bool, video_name: str, display: bool, server_port: int, fps: int):
     global processes
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     server_logger = Logger(name="ServerLogger", log_file="server.log")
@@ -46,32 +44,25 @@ def main(use_emulator: bool, stitch: bool, compute_depth: bool, video_names: lis
     vision_process.start()
     processes.append(vision_process)
 
-    for port in server_ports:
-        server_logger.get_logger().info(f"Starting server on port: {port}")
-        process = multiprocessing.Process(target=start_server, args=(port, frame_queue, display, server_logger),
-                                          name=f"Server Process: {port}")
-        process.start()
-        processes.append(process)
+    server_logger.get_logger().info(f"Starting server on port: {server_port}")
+    process = multiprocessing.Process(target=start_server, args=(server_port, frame_queue, display, server_logger), name=f"Server Process: {server_port}")
 
+    process.start()
+    processes.append(process)
     if use_emulator:
         client_logger = Logger(name="EmulatorLogger", log_file="emulator.log")
         logs_to_zip.append("emulator.log")
         server_logger.get_logger().info("Running Emulated Client...")
 
-        for idx, port in enumerate(server_ports):
-            video = video_names[min(idx, len(video_names) - 1)]
-            client_logger.get_logger().info(f"Starting emulator on: {port} with video: {video}")
-            emulator_process = multiprocessing.Process(target=start_emulator,
-                                                       args=(ip_addr, video, port, client_logger))
-            emulator_process.start()
-            processes.append(emulator_process)
+        emu_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, video_name, server_port, client_logger))
+        emu_process.start()
+        processes.append(emu_process)
 
     utils.create_killer(start_time=start_time, logs=logs_to_zip)
 
     for process in processes:
         process.join()
     server_logger.get_logger().info(f"Joined vision process: {vision_process.pid}")
-
 
 if __name__ == "__main__":
     server_logger = Logger(name="ServerLogger", log_file="server.log")
@@ -81,9 +72,9 @@ if __name__ == "__main__":
     use_emulator = Config.get("use_emulator", False)
     stitch = Config.get("vision_arguments.stitch", False)
     compute_depth = Config.get("vision_arguments.compute_depth", False)
-    video_names = Config.get("video_arguments.video_names", ["zoom_out"])
+    video_name = Config.get("video_arguments.video_names", "zoom_out")
     display = Config.get("video_arguments.display", False)
-    server_ports = Config.get("server_ports", [9000, 9001])
+    server_port = Config.get("server_ports", 9000)
     fps = Config.get("video_arguments.fps", 30)
 
-    main(use_emulator, stitch, compute_depth, video_names, display, server_ports, fps)
+    main(use_emulator, stitch, compute_depth, video_name, display, server_port, fps)

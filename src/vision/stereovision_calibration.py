@@ -1,3 +1,7 @@
+
+################ Got this from YouTube but its just a starting point ###################
+
+
 import numpy as np
 import cv2 as cv
 import glob
@@ -17,7 +21,7 @@ criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 objp = np.zeros((chessboardSize[0] * chessboardSize[1], 3), np.float32)
 objp[:,:2] = np.mgrid[0:chessboardSize[0],0:chessboardSize[1]].T.reshape(-1,2)
 
-size_of_chessboard_squares_mm = 25
+size_of_chessboard_squares_mm = 24
 objp = objp * size_of_chessboard_squares_mm
 
 # Arrays to store object points and image points from all the images.
@@ -26,8 +30,8 @@ imgpointsL = [] # 2d points in image plane.
 imgpointsR = [] # 2d points in image plane.
 
 
-imagesLeft = sorted(glob.glob('images/stereoLeft/*.png'))
-imagesRight = sorted(glob.glob('images/stereoRight/*.png'))
+imagesLeft = sorted(glob.glob('images/stereo/left/*.jpg'))
+imagesRight = sorted(glob.glob('images/stereo/right/*.jpg'))
 
 for imgLeft, imgRight in zip(imagesLeft, imagesRight):
 
