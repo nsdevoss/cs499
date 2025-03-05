@@ -1,36 +1,52 @@
 # CS499 Server Branch
 
-## Running Everything
+## Running the Program
 
-You can run (almost) everything easily on your own machine! The emulator has the exact same functionality as the Raspberry PI.
-It sends data and connects to the server exactly the same, this is useful if you want to test stuff without having the PI.
+To run the program all you need to do is type the following in the terminal:
 
-To run the server on your machine use:
+>
 > python main.py
+> 
+Make sure that you have installed all the dependencies in `requirements.txt`.
 
-**Arguments**
+## Configuring the Program
 
-`-e or --emulator`: Runs the emulator on your machine.
+The configuration system is constantly being worked on but here is what is has currently. Here is `config.json` where 
+all the configurations are stored.
 
-`-d or --display`: Will disable the camera feed display on the laptop. Default will display camera feed.
+```json
+"emulator_arguments": {
+  "enabled": boolean,
+  "stream_enabled": boolean,
+  "video_name": string
+}
+```
+This is for the emulator.`enabled` dictates if the emulator is enabled. 
+`stream_enabled` dictates if there will be a camera feed opened for the emulator stream. If `false`, then the video will be used instead.
+`video_name` is the name of the video used under `assets/videos`.
 
-`-s or --stitch`: If we want to run the stitching function or not. Default will not run stitching.
+```json
+"server_port": int
+```
+This is the port the server will open on for the camera client to connect to.
 
-`-v [video] or --video [video]`: Chooses what video will be displayed on the emulator, you can pass 1 or 2 video names. Default is `"zoom_out"`
+```json
+"vision_arguments": {
+    "stitch": boolean,
+    "depth_estimation": boolean,
+    "calibration_file": string
+  },
+```
+This is for the computations done on the frames in the frame queue. `stitch` determines if the stitching algorithm will be used.
+`depth_estimation` will run the depth estimation computation. And `calibration_file` is the XML calibration file used for the setup.
 
-*Make sure that you are in the root directory to run `main.py` or if you aren't then make sure to pass the correct path to the file.*
-
-***The Emulator functions exactly the same as the Raspberry PI. It sends the stream and connects to the socket the exact same way. Functional wise, they are the exact that the IP if the emulator is the same as the server, which is not important at all.***
-## Running parts individually
-
-### Running the server
-To run the server individually you need to run src/server/server.py.
-This will create a server on your machine listening on port 9000. I'm working on making the port configurable.
-
-### Running the Raspberry PI
-To run on the Raspberry PI individually, you need to run src/pi/client_pi.py on the Raspberry PI.
-The PI must be on the same Wi-Fi as the server in order to connect to it.
-
-### Running the Emulator
-To run the emulator individually, you need to run src/pi/emulator.py on your machine.
-This will simulate the Raspberry PI and will be exactly the same in sending data and connection.
+```json
+"camera_parameters": {
+    "baseline": float,
+    "focal_length": float,
+    "viewing_angle": float
+  }
+```
+This is for the physical camera values that will be needed for calibration and depth estimation. These are purely its physical values, so you should not change this configuration unless you are using an emulated camera that you need to calibrate.
+`baseline` is the distance between the sensors. `focal_length` si the focal length of the camera, since there are 2 identical ones we only need to store one value.
+`viewing_angle` is the FOV of the cameras, currently it is locked to 120 degrees.
