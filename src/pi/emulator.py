@@ -21,14 +21,19 @@ Params:
 :param logger: The logger passed into here
 """
 class Emulator:
-    def __init__(self, server_ip, video, server_port, logger=None):
+    def __init__(self, server_ip, video, stream_enabled, server_port, logger=None):
         self.server_ip = server_ip
         self.server_port = server_port
         self.logger = logger
         # Boilerplate socket set up stuff
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        video_path = os.path.join(ROOT_DIR, "assets/videos", f"{video}.mp4")
-        self.video = cv2.VideoCapture(video_path)
+        if stream_enabled:
+            self.video_capture = cv2.VideoCapture(0)
+        else:
+            video_path = os.path.join(ROOT_DIR, "assets/videos", f"{video}.mp4")
+            print(f"Video path: {video_path}")
+            self.video = cv2.VideoCapture(video_path)
+
         self.connect_to_server()
 
     def connect_to_server(self):
@@ -104,6 +109,35 @@ class Emulator:
         self.video.release()  # Release video because we are good programmers and care about our resources
         self.client_socket.close()  # CLose connection to server
         log_writer.info("Connection closed.")
+
+    def send_video_stream(self):
+        log_writer = self.logger.get_logger()
+        while True:
+            try:
+                while self.video_capture.isOpened():
+                    # ret is a bool that determines if the frame was read correctly or not, frame is the video frame
+                    ret, frame = self.video_capture.read()
+                    if not ret:
+                        break
+
+                    _, buffer = cv2.imencode('.jpg', frame)  # Encode the frame into a numpy array into the buffer
+                    data = pickle.dumps(buffer)  # Serialize the encoded frame
+                    size = struct.pack("Q", len(data))  # Get the size of the frame to send
+                    self.client_socket.sendall(size + data)  # Send it
+
+            except (BrokenPipeError, ConnectionResetError) as e:
+                log_writer.error(f"Connection lost: {e}, Reconnecting...")
+                self.client_socket.close()
+                self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.connect_to_server()
+
+            except Exception as e:
+                log_writer.error(f"Error: {e}")
+                break
+
+        self.video_capture.release()
+        self.client_socket.close()
+        log_writer.info("Client Connection closed.")
 
 
 def is_port_open(ip, port):

@@ -1,4 +1,5 @@
 import cv2
+import queue
 from src.vision import stitching
 from src.vision.depth import compute_disparity
 
@@ -10,7 +11,7 @@ class Vision:
     Params:
     :param frame_queue: Frame queue containing frames from both cameras.
     :param action_arguments: Dictionary defining which functionalities to enable.
-                            {"stitch": False, "depth_perception": False}
+                            {"stitch": False, "depth_estimation": False}
     :param server_logger: The server logger
     """
     def __init__(self, frame_queue, action_arguments: dict, server_logger, port=None):
@@ -24,28 +25,30 @@ class Vision:
             if self.action_arguments[action]:
                 eval(f"self.{action}()")
 
-    def stitching(self):
+    def stitch(self):
         self.server_logger.get_logger().info("Running stitching.")
         stitching.frame_stitcher(self.frame_queue)
 
-    def depth_perception(self):
-        frames = {9000: None, 9001: None}
-
+    def depth_estimation(self):
         while True:
-            port, frame = self.frame_queue.get()
-            frames[port] = frame
+            try:
+                left_frame, right_frame = self.frame_queue.get()
 
-            if frames[9000] is not None and frames[9001] is not None:
-                try:
-                    disparity = compute_disparity(frames[9000], frames[9001])
+                if left_frame is not None and right_frame is not None:
+                    try:
+                        disparity = compute_disparity(left_frame, right_frame)
+                        cv2.imshow("frame Left", left_frame)
+                        cv2.imshow("frame right", right_frame)
+                        cv2.imshow("Vision", disparity)
 
-                    cv2.imshow("Disparity Map", (disparity / disparity.max() * 255).astype('uint8'))
+                        if cv2.waitKey(1) == ord("q"):
+                            break
+                    except Exception as e:
+                        self.server_logger.get_logger().error(f"Error computing depth estimation: {e}")
 
-                    if cv2.waitKey(1) == ord("q"):
-                        break
-
-                except Exception as e:
-                    self.server_logger.get_logger().error(f"Error computing depth: {e}")
+            except queue.Empty:
+                self.server_logger.get_logger().warning("Frame queue is empty.")
+                break  # Exit the loop if there are no frames left to process
 
         cv2.destroyAllWindows()
 

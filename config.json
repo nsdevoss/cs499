@@ -1,14 +1,22 @@
 {
-  "use_emulator": true,
-  "server_ports": 9000,
+  "emulator_arguments": {
+    "enabled": true,
+    "stream_enabled": true,
+    "video_name": "dog"
+  },
+  "server_port": 9000,
   "video_arguments": {
-    "video_name": "zoom_out",
-    "display": true,
+    "display": false,
     "fps": 30
   },
   "vision_arguments": {
     "stitch": false,
-    "compute_depth": false,
+    "depth_estimation": true,
     "calibration_file": ""
+  },
+  "camera_parameters": {
+    "baseline": 70,
+    "focal_length": 25,
+    "viewing_angle": 120
   }
 }

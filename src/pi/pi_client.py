@@ -77,8 +77,7 @@ if __name__ == "__main__":
     SERVER_IP = "192.168.1.69"  # This needs to be the IP of the laptop (will fix hardcode later)
 
     cameras = [
-        {"camera_index": 0, "port": 9000},
-        {"camera_index": 2, "port": 9001},
+        {"camera_index": 0, "port": 9000}
     ]
 
     processes = []

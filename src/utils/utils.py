@@ -64,13 +64,19 @@ def create_killer(start_time, logs: list):
     root = tk.Tk()
     root.title("Control Panel")
 
-    kill_button = tk.Button(root, text="Kill Everything", command=lambda: kill_everything(start_time, logs), bg="red", fg="white")
+    kill_button = tk.Button(root, text="Kill Everything", command=lambda: kill_everything(start_time, logs), bg="red",
+                            fg="white")
     kill_button.pack(pady=20, padx=20)
 
     root.mainloop()
 
 
-
+def split_frame(frame):
+    height, width = frame.shape
+    half_width = width // 2
+    left_frame = frame[:, :half_width]
+    right_frame = frame[:, half_width:]
+    return left_frame, right_frame
 
 
 ################ Experimental, you can try to make it better ################

@@ -1,11 +1,12 @@
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+
+import cv2
+import numpy as np
 
 
-def compute_disparity(left_frame, right_frame):
-    left_gray = cv2.cvtColor(left_frame, cv2.IMREAD_GRAYSCALE)
-    right_gray = cv2.cvtColor(right_frame, cv2.IMREAD_GRAYSCALE)
-
+def compute_disparity(left_img, right_img):
     window_size = 7
     min_disp = 16
     nDispFactor = 14
@@ -22,8 +23,10 @@ def compute_disparity(left_frame, right_frame):
                                    speckleRange=2,
                                    preFilterCap=63,
                                    mode=cv2.STEREO_SGBM_MODE_SGBM_3WAY)
-    disparity = stereo.compute(left_gray, right_gray).astype(np.float32) / 16.0
-    return disparity
+    disparity = stereo.compute(left_img, right_img).astype(np.float32) / 16.0
+    plt.imshow(disparity)
+    plt.colorbar()
+    plt.show()
 
 
 class DepthEstimator:
@@ -45,3 +48,10 @@ class DepthEstimator:
         disparity_map[disparity_map == 0] = 1.0
         depth_map = (self.focal_length * self.baseline) / disparity_map
         return depth_map
+
+
+if __name__ == "__main__":
+    left = cv2.imread("/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/im0.png")
+    right = cv2.imread("/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/im1.png")
+
+    compute_disparity(left, right)

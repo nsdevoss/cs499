@@ -7,11 +7,26 @@ class Config:
     _logger = None
 
     DEFAULT_CONFIG = {
-        "use_emulator": False,
-        "stitch": False,
-        "video_names": ["zoom_out"],
-        "display": False,
-        "server_ports": [9000, 9001]
+        "emulator_arguments": {
+            "enabled": False,
+            "stream_enabled": False,
+            "video_name": "dog"
+        },
+        "server_port": 9000,
+        "video_arguments": {
+            "display": True,
+            "fps": 30
+        },
+        "vision_arguments": {
+            "stitch": False,
+            "depth_estimation": False,
+            "calibration_file": ""
+        },
+        "camera_parameters": {
+            "baseline": 70,
+            "focal_length": 25,
+            "viewing_angle": 120
+        }
     }
 
     @classmethod
@@ -38,7 +53,8 @@ class Config:
 
             for key, default_value in cls.DEFAULT_CONFIG.items():
                 if key not in cls._config_data:
-                    cls._logger.get_logger().warning(f"Missing key '{key}' in config file. Using default: {default_value}")
+                    cls._logger.get_logger().warning(
+                        f"Missing key '{key}' in config file. Using default: {default_value}")
                     cls._config_data[key] = default_value
 
             cls._logger.get_logger().info(f"Config file '{CONFIG_PATH}' loaded successfully.")
