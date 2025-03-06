@@ -17,7 +17,8 @@ def start_server(port, frame_queue, display, server_logger):
     local_server.receive_video_stream()
 
 def start_emulator(ip_addr, video, stream_enabled, port, client_logger):
-    client = emulator.Emulator(ip_addr, video, stream_enabled, port, logger=client_logger)
+    client_logger.get_logger().info("start_emulator")
+    client = emulator.Emulator(ip_addr, video, stream_enabled, port, client_logger)
     if stream_enabled:
         client.send_video_stream()
     else:
@@ -28,10 +29,10 @@ def start_vision_process(frame_queue, vision_arguments, server_logger):
     vision.start()
 
 
-def main(server_port, emulator_args, vision_args, video_args):
+def main(server_port, emulator_args, vision_args, video_args, server_logger, client_logger):
     global processes
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    server_logger = Logger(name="ServerLogger", log_file="server.log")
+    # server_logger = Logger(name="ServerLogger", log_file="server.log")
 
     logs_to_zip = ["server.log"]
     ip_addr = utils.get_ip_address()
@@ -54,11 +55,9 @@ def main(server_port, emulator_args, vision_args, video_args):
     processes.append(process)
 
     if emulator_args.get("enabled"):
-        client_logger = Logger(name="EmulatorLogger", log_file="emulator.log")
         logs_to_zip.append("emulator.log")
         server_logger.get_logger().info("Running Emulated Client...")
-
-        emu_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, emulator_args.get("video_name"), emulator_args.get("stream_enabled"), server_port, client_logger))
+        emu_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, emulator_args.get("video_name"), emulator_args.get("stream_enabled"), server_port, client_logger), name=f"Emulator Process: {server_port}")
         emu_process.start()
         processes.append(emu_process)
 
@@ -78,5 +77,10 @@ if __name__ == "__main__":
     vision_args = Config.get("vision_arguments")
     server_port = Config.get("server_port", 9000)
 
-    main(server_port, emulator_args, vision_args, video_args)
+    client_log_name = "client.log"
+    if emulator_args.get("enabled"):
+        client_log_name = "emulator.log"
+    client_logger = Logger(name="ClientLogger", log_file=client_log_name)
+
+    main(server_port, emulator_args, vision_args, video_args, server_logger, client_logger)
 

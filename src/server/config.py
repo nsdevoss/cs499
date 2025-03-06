@@ -56,6 +56,8 @@ class Config:
                     cls._logger.get_logger().warning(
                         f"Missing key '{key}' in config file. Using default: {default_value}")
                     cls._config_data[key] = default_value
+                else:
+                    cls._logger.get_logger().info(f"Config value loaded: {key}: {cls._config_data[key]}")
 
             cls._logger.get_logger().info(f"Config file '{CONFIG_PATH}' loaded successfully.")
 

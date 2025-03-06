@@ -1,7 +1,7 @@
 import cv2
 import queue
 from src.vision import stitching
-from src.vision.depth import compute_disparity
+import numpy as np
 
 
 class Vision:
@@ -37,9 +37,9 @@ class Vision:
                 if left_frame is not None and right_frame is not None:
                     try:
                         disparity = compute_disparity(left_frame, right_frame)
-                        cv2.imshow("frame Left", left_frame)
-                        cv2.imshow("frame right", right_frame)
-                        cv2.imshow("Vision", disparity)
+                        cv2.imshow("Frame Left", left_frame)
+                        cv2.imshow("Frame Right", right_frame)
+                        cv2.imshow("Depth Map", disparity)
 
                         if cv2.waitKey(1) == ord("q"):
                             break
@@ -55,3 +55,32 @@ class Vision:
     def export(self):
         # Womp womp
         return
+
+
+def compute_disparity(left, right):
+    fx = 250  # Lens focal length
+    baseline = 25  # Distance in mm between the two cameras
+    disparities = 256  # Number of disparities to consider
+    block = 15  # Block size to match
+    units = 0.512  # Depth units, adjusted for output
+
+    # Ensure images are grayscale
+    if len(left.shape) > 2:
+        left = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
+    if len(right.shape) > 2:
+        right = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
+
+    sbm = cv2.StereoBM_create(numDisparities=disparities, blockSize=block)
+
+    disparity = sbm.compute(left, right)
+    valid_pixels = disparity > 0
+
+    depth = np.zeros_like(left, dtype=np.uint8)
+    depth[valid_pixels] = (fx * baseline) / (units * disparity[valid_pixels])
+    depth = cv2.equalizeHist(depth)
+
+    colorized_depth = np.zeros((left.shape[0], left.shape[1], 3), dtype=np.uint8)
+    temp = cv2.applyColorMap(depth, cv2.COLORMAP_JET)
+    colorized_depth[valid_pixels] = temp[valid_pixels]
+
+    return colorized_depth

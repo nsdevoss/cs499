@@ -29,9 +29,11 @@ class Logger:
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.DEBUG)
 
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-        log_path = os.path.join(self.log_dir, log_file)
+        dir_path = os.path.join(ROOT_DIR, self.log_dir)
+        log_path = os.path.join(ROOT_DIR, self.log_dir, log_file)
+
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
 
         formatter = logging.Formatter('[%(asctime)s] [%(levelname)s]: %(message)s', datefmt='%H:%M:%S')
 

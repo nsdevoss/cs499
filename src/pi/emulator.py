@@ -21,7 +21,7 @@ Params:
 :param logger: The logger passed into here
 """
 class Emulator:
-    def __init__(self, server_ip, video, stream_enabled, server_port, logger=None):
+    def __init__(self, server_ip, video, stream_enabled, server_port, logger):
         self.server_ip = server_ip
         self.server_port = server_port
         self.logger = logger
@@ -35,6 +35,7 @@ class Emulator:
             self.video = cv2.VideoCapture(video_path)
 
         self.connect_to_server()
+        self.logger.get_logger().info("Emulator initialized successfully.")
 
     def connect_to_server(self):
         """

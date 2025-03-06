@@ -1,12 +1,12 @@
 {
   "emulator_arguments": {
     "enabled": true,
-    "stream_enabled": true,
-    "video_name": "dog"
+    "stream_enabled": false,
+    "video_name": "dog2"
   },
   "server_port": 9000,
   "video_arguments": {
-    "display": false,
+    "display": true,
     "fps": 30
   },
   "vision_arguments": {
