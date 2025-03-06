@@ -32,14 +32,10 @@ def start_vision_process(frame_queue, vision_arguments, server_logger):
 def main(server_port, emulator_args, vision_args, video_args, server_logger, client_logger):
     global processes
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # server_logger = Logger(name="ServerLogger", log_file="server.log")
 
     logs_to_zip = ["server.log"]
     ip_addr = utils.get_ip_address()
 
-    # vision_arguments = {"stitch": vision_args.get("stitch"), "depth_estimation": vision_args.get("depth_estimation")}
-    # for argument in vision_arguments:
-    #     server_logger.get_logger().info(f"Vision action {argument}: {vision_arguments[argument]}")
     server_logger.get_logger().info(f"Got IP Address: {ip_addr}")
 
     frame_queue = multiprocessing.Queue()
