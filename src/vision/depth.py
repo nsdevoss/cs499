@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from src.utils.utils import split_frame
 
 import cv2
 import numpy as np
@@ -51,7 +52,8 @@ class DepthEstimator:
 
 
 if __name__ == "__main__":
-    left = cv2.imread("/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/im0.png")
-    right = cv2.imread("/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/im1.png")
+    img = cv2.imread("/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/src/vision/calibration/stereo/img_00.jpg")
+    left, right = split_frame(img)
+    #right = cv2.imread("/Users/nicholasburczyk/Desktop/CS CLASS/CS499sp25/cs499/assets/images/stereo/skates/im1.png")
 
     compute_disparity(left, right)

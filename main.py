@@ -1,4 +1,3 @@
-import argparse
 import multiprocessing
 from src.server import server
 from src.server.config import Config
@@ -12,8 +11,8 @@ MAX_QUEUE_SIZE = 10
 processes = []
 
 
-def start_server(port, frame_queue, display, server_logger):
-    local_server = server.StreamCameraServer(port=port, frame_queue=frame_queue, display=display, logger=server_logger)
+def start_server(port, frame_queue, display, fps, server_logger):
+    local_server = server.StreamCameraServer(port=port, frame_queue=frame_queue, display=display, fps=fps, logger=server_logger)
     local_server.receive_video_stream()
 
 def start_emulator(ip_addr, video, stream_enabled, port, client_logger):
@@ -25,7 +24,7 @@ def start_emulator(ip_addr, video, stream_enabled, port, client_logger):
         client.send_video()
 
 def start_vision_process(frame_queue, vision_arguments, server_logger):
-    vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments, server_logger=server_logger)
+    vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments, calibration_file=vision_arguments.get("calibration_file"), server_logger=server_logger)
     vision.start()
 
 
@@ -45,7 +44,7 @@ def main(server_port, emulator_args, vision_args, video_args, server_logger, cli
     processes.append(vision_process)
 
     server_logger.get_logger().info(f"Starting server on port: {server_port}")
-    process = multiprocessing.Process(target=start_server, args=(server_port, frame_queue, video_args.get("display"), server_logger), name=f"Server Process: {server_port}")
+    process = multiprocessing.Process(target=start_server, args=(server_port, frame_queue, video_args.get("display"), video_args.get("fps"), server_logger), name=f"Server Process: {server_port}")
 
     process.start()
     processes.append(process)
@@ -57,7 +56,7 @@ def main(server_port, emulator_args, vision_args, video_args, server_logger, cli
         emu_process.start()
         processes.append(emu_process)
 
-    utils.create_killer(start_time=start_time, logs=logs_to_zip)
+    utils.create_killer(start_time=start_time, processes=processes, logs=logs_to_zip)
 
     for process in processes:
         process.join()

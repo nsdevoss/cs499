@@ -30,8 +30,8 @@ imgpointsL = [] # 2d points in image plane.
 imgpointsR = [] # 2d points in image plane.
 
 
-imagesLeft = sorted(glob.glob('images/stereo/left/*.jpg'))
-imagesRight = sorted(glob.glob('images/stereo/right/*.jpg'))
+imagesLeft = sorted(glob.glob('calibration/stereo/*.jpg'))
+imagesRight = sorted(glob.glob('calibration/stereo/*.jpg'))
 
 for imgLeft, imgRight in zip(imagesLeft, imagesRight):
 

@@ -19,13 +19,25 @@ Params:
 :param frame_queue: This passes the frame queue (more on this in main.py and below)
 :param logger: The logger that is passed into here
 """
+
+
+def split_frame(frame):
+    height, width, _ = frame.shape
+    half_width = width // 2
+    left_frame = frame[:, :half_width]
+    right_frame = frame[:, half_width:]
+    return left_frame, right_frame
+
+
 class StreamCameraServer:
-    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None, display=True, logger=None):
+    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None, display=True, fps=60, logger=None):
         self.host = host
         self.port = port
         self.frame_queue = frame_queue
         self.display = display
+        self.fps = fps
         self.logger = logger
+        self.shutdown = False
         # Boilerplate socket stuff
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -77,7 +89,8 @@ class StreamCameraServer:
 
                     # We input the frame into the frame queue along with its server port
                     # We do this because when we get the frame out we will know where it came from
-                    left_frame, right_frame = self.split_frame(frame)
+                    left_frame, right_frame = split_frame(frame)
+
                     if self.frame_queue is not None:
                         self.frame_queue.put((left_frame, right_frame))
 
@@ -90,6 +103,9 @@ class StreamCameraServer:
                     del frame, frame_data
                     gc.collect()
 
+                    if self.shutdown:
+                        break
+
             except (ConnectionResetError, BrokenPipeError) as e:
                 log_writer.error(f"{e}. Client disconnected. Waiting for a new connection...")
 
@@ -101,17 +117,12 @@ class StreamCameraServer:
                 cv2.destroyAllWindows()
                 log_writer.info("Connection closed.")
 
-    def split_frame(self, frame):
-        height, width, _ = frame.shape
-        half_width = width // 2
-        left_frame = frame[:, :half_width]
-        right_frame = frame[:, half_width:]
-        return left_frame, right_frame
-
     # Need to find a way to use this, rn we just KILL everything
     def shutdown(self):
         self.logger.get_logger().info("Shutting down server")
-        os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
+        self.server_socket.close()
+        self.shutdown = True
+        self.logger.get_logger().info("Successfully shut down server")
 
 
 if __name__ == "__main__":

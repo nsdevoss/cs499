@@ -4,6 +4,7 @@ import glob
 import os
 import time
 import matplotlib.pyplot as plt
+from vision import compute_disparity
 
 checkerboard_size = (8, 6)  # 8x6 internal corners
 square_size = 24.0  # 25mm
@@ -457,6 +458,9 @@ def live_rectification(cam_id=0, alpha=None):
 
             vis_left = rectified_left.copy()
             vis_right = rectified_right.copy()
+
+            disp = compute_disparity(vis_left, vis_right)
+            cv2.imshow("Disparity", disp)
 
             if show_roi:
                 x, y, w, h = roi_left

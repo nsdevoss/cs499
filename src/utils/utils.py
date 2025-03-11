@@ -2,7 +2,6 @@ import subprocess
 import tkinter as tk
 import gc
 import os
-import signal
 import zipfile
 
 MAX_QUEUE_SIZE = 10
@@ -32,19 +31,19 @@ def zip_logs(start_time, logs: list):
     if not logs:
         return
 
-    if not os.path.isdir("./logs"):
-        os.makedirs("./logs")
+    if not os.path.isdir("../logs"):
+        os.makedirs("../logs")
 
-    zip_filename = os.path.join("./logs", f"{start_time}.zip")
+    zip_filename = os.path.join("../logs", f"{start_time}.zip")
     try:
         with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
             for log_file in logs:
-                log_path = os.path.join("./logs", log_file)
+                log_path = os.path.join("../logs", log_file)
                 if os.path.exists(log_path):
                     base_name = os.path.splitext(log_file)[0]
 
                     zipf.write(log_path, os.path.basename(log_file))
-                    os.rename(log_path, f"./logs/{base_name}_latest.log")
+                    os.rename(log_path, f"../logs/{base_name}_latest.log")
         print(f"Zipped logs: {logs}")
 
     except Exception as e:
@@ -52,19 +51,31 @@ def zip_logs(start_time, logs: list):
 
 
 # Kills all the processes in main loop
-def kill_everything(start_time, logs: list):
+def shutdown(start_time, processes, logs: list, root=None):
     print("Killing all processes...")
     zip_logs(start_time, logs)
+    for process in processes:
+        obj = getattr(process, 'obj', None)
+        if obj and hasattr(obj, 'shutdown'):
+            obj.shutdown()
+            print(f"Shutdown called for process {process.pid}")
+
+        pid = process.pid
+        print(f"Killed process: {pid}")
+        process.terminate()
     print("Zipped all current logs")
-    os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
+
+    if root:
+        print("Closing Tkinter window...")
+        root.destroy()
 
 
 # Makes a little Tkinter widget to kill everything
-def create_killer(start_time, logs: list):
+def create_killer(start_time, processes, logs: list):
     root = tk.Tk()
-    root.title("Control Panel")
+    root.title("Kill Button")
 
-    kill_button = tk.Button(root, text="Kill Everything", command=lambda: kill_everything(start_time, logs), bg="red",
+    kill_button = tk.Button(root, text="Kill Everything", command=lambda: shutdown(start_time, processes, logs=logs, root=root), bg="red",
                             fg="white")
     kill_button.pack(pady=20, padx=20)
 
@@ -72,7 +83,7 @@ def create_killer(start_time, logs: list):
 
 
 def split_frame(frame):
-    height, width = frame.shape
+    height, width, _ = frame.shape
     half_width = width // 2
     left_frame = frame[:, :half_width]
     right_frame = frame[:, half_width:]

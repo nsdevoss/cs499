@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from src.utils.utils import split_frame
 
 cv_file = cv2.FileStorage()
 cv_file.open('stereoMap.xml', cv2.FileStorage_READ)
@@ -10,23 +11,22 @@ stereoMapR_x = cv_file.getNode('stereoMapR_x').mat()
 stereoMapR_y = cv_file.getNode('stereoMapR_y').mat()
 cv_file.release()
 
-cap_right = cv2.VideoCapture(1, cv2.CAP_AVFOUNDATION)
-cap_left = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
 
 stereo = cv2.StereoBM_create(numDisparities=64, blockSize=15)
 
 print("Before While")
-while cap_right.isOpened() and cap_left.isOpened():
+while cap.isOpened():
 
-    success_right, frame_right = cap_right.read()
-    success_left, frame_left = cap_left.read()
+    success, frame = cap.read()
+    left, right = split_frame(frame)
 
-    if not success_right or not success_left:
+    if not success:
         print("Error: Couldn't read frames")
         break
 
-    gray_right = cv2.cvtColor(frame_right, cv2.COLOR_BGR2GRAY)
-    gray_left = cv2.cvtColor(frame_left, cv2.COLOR_BGR2GRAY)
+    gray_right = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
+    gray_left = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
 
     rectified_right = cv2.remap(gray_right, stereoMapR_x, stereoMapR_y, cv2.INTER_LANCZOS4, cv2.BORDER_CONSTANT, 0)
     rectified_left = cv2.remap(gray_left, stereoMapL_x, stereoMapL_y, cv2.INTER_LANCZOS4, cv2.BORDER_CONSTANT, 0)
@@ -43,6 +43,5 @@ while cap_right.isOpened() and cap_left.isOpened():
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-cap_right.release()
-cap_left.release()
+cap.release()
 cv2.destroyAllWindows()
