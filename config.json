@@ -11,7 +11,7 @@
   },
   "vision_arguments": {
     "stitch": false,
-    "depth_estimation": false,
+    "depth_estimation": true,
     "object_detect": false,
     "calibration_file": "stereoMap.xml"
   },

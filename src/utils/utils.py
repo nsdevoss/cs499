@@ -31,19 +31,19 @@ def zip_logs(start_time, logs: list):
     if not logs:
         return
 
-    if not os.path.isdir("../logs"):
-        os.makedirs("../logs")
+    if not os.path.isdir("logs"):
+        os.makedirs("logs")
 
-    zip_filename = os.path.join("../logs", f"{start_time}.zip")
+    zip_filename = os.path.join("logs", f"{start_time}.zip")
     try:
         with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
             for log_file in logs:
-                log_path = os.path.join("../logs", log_file)
+                log_path = os.path.join("logs", log_file)
                 if os.path.exists(log_path):
                     base_name = os.path.splitext(log_file)[0]
 
                     zipf.write(log_path, os.path.basename(log_file))
-                    os.rename(log_path, f"../logs/{base_name}_latest.log")
+                    os.rename(log_path, f"ogs/{base_name}_latest.log")
         print(f"Zipped logs: {logs}")
 
     except Exception as e:
@@ -83,7 +83,8 @@ def create_killer(start_time, processes, logs: list):
 
 
 def split_frame(frame):
-    height, width, _ = frame.shape
+    print(frame.shape)
+    height, width = frame.shape
     half_width = width // 2
     left_frame = frame[:, :half_width]
     right_frame = frame[:, half_width:]

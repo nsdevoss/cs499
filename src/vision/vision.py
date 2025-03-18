@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-CALIBRATION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../calibrations"))
+CALIBRATION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../calibrations"))
 
 class Vision:
     """
@@ -23,6 +23,7 @@ class Vision:
         self.server_logger = server_logger
         self.port = port
         self.calibration_file = os.path.join(CALIBRATION_DIR, calibration_file)
+        print(f"Calibration file: {self.calibration_file}")
 
     def start(self):
         for action in self.action_arguments:
