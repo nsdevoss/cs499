@@ -2,7 +2,6 @@
 
 import numpy
 import cv2
-from src.utils.utils import split_frame
 from matplotlib import pyplot as plt
 
 

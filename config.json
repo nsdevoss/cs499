@@ -2,7 +2,7 @@
   "emulator_arguments": {
     "enabled": true,
     "stream_enabled": false,
-    "video_name": "dog2"
+    "video_name": "chair2"
   },
   "server_port": 9000,
   "video_arguments": {
@@ -12,7 +12,8 @@
   "vision_arguments": {
     "stitch": false,
     "depth_estimation": true,
-    "calibration_file": ""
+    "object_detect": false,
+    "calibration_file": "stereoMap.xml"
   },
   "camera_parameters": {
     "baseline": 70,

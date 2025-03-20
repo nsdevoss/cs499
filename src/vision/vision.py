@@ -2,7 +2,10 @@ import cv2
 import queue
 from src.vision import stitching
 import numpy as np
+import os
 
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+CALIBRATION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../calibrations"))
 
 class Vision:
     """
@@ -14,14 +17,18 @@ class Vision:
                             {"stitch": False, "depth_estimation": False}
     :param server_logger: The server logger
     """
-    def __init__(self, frame_queue, action_arguments: dict, server_logger, port=None):
+    def __init__(self, frame_queue, action_arguments: dict, calibration_file, server_logger, port=None):
         self.frame_queue = frame_queue
         self.action_arguments = action_arguments
         self.server_logger = server_logger
         self.port = port
+        self.calibration_file = os.path.join(CALIBRATION_DIR, calibration_file)
+        print(f"Calibration file: {self.calibration_file}")
 
     def start(self):
         for action in self.action_arguments:
+            if action == "calibration_file":
+                continue
             if self.action_arguments[action]:
                 eval(f"self.{action}()")
 
@@ -48,9 +55,12 @@ class Vision:
 
             except queue.Empty:
                 self.server_logger.get_logger().warning("Frame queue is empty.")
-                break  # Exit the loop if there are no frames left to process
+                break
 
         cv2.destroyAllWindows()
+
+    def object_detect(self):
+        pass
 
     def export(self):
         # Womp womp
@@ -58,13 +68,12 @@ class Vision:
 
 
 def compute_disparity(left, right):
-    fx = 250  # Lens focal length
-    baseline = 25  # Distance in mm between the two cameras
-    disparities = 256  # Number of disparities to consider
-    block = 15  # Block size to match
-    units = 0.512  # Depth units, adjusted for output
+    fx = 100
+    baseline = 7
+    disparities = 256
+    block = 15
+    units = 0.512
 
-    # Ensure images are grayscale
     if len(left.shape) > 2:
         left = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
     if len(right.shape) > 2:
@@ -84,3 +93,4 @@ def compute_disparity(left, right):
     colorized_depth[valid_pixels] = temp[valid_pixels]
 
     return colorized_depth
+

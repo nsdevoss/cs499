@@ -25,6 +25,7 @@ class Emulator:
         self.server_ip = server_ip
         self.server_port = server_port
         self.logger = logger
+        self.shutdown = False
         # Boilerplate socket set up stuff
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if stream_enabled:
@@ -97,6 +98,9 @@ class Emulator:
                 self.client_socket.sendall(size + data)
                 del data
 
+                if self.shutdown:
+                    break
+
             except (BrokenPipeError, ConnectionResetError) as e:
                 log_writer.error(f"Connection lost: {e}. Reconnecting...")
                 self.client_socket.close()
@@ -139,6 +143,14 @@ class Emulator:
         self.video_capture.release()
         self.client_socket.close()
         log_writer.info("Client Connection closed.")
+
+    def shutdown(self):
+        log_writer = self.logger.get_logger()
+        log_writer.info(f"Shutting down emulator...")
+        self.client_socket.close()
+        self.shutdown = True
+        log_writer.info(f"Successfully shut down emulator")
+
 
 
 def is_port_open(ip, port):
