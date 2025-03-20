@@ -1,9 +1,11 @@
+import socket
 import subprocess
 import tkinter as tk
 import gc
 import os
 import signal
 import zipfile
+import platform
 
 MAX_QUEUE_SIZE = 10
 
@@ -26,6 +28,20 @@ def get_ip_address():
     print("No IP Address Found")
     return "Unknown"
 
+# Windows get_ip_address() method
+def windows_get_ip_address():
+    try:
+        host_name = socket.gethostname()
+        windows_ip = socket.gethostbyname(host_name)
+        print("Your Windows Computer name is: ")
+        print("Your Windows Computer IP Address is:" + windows_ip)
+        if windows_ip:
+            print(f"Found IP Address: " + windows_ip)
+            return windows_ip
+    except Exception as e:
+        print(f"Error Retrieving Windows IP: {e}")
+    print("No IP Address Found")
+    return "Unknown"
 
 # Zips all the current logs, we get the logs from main.py in logs_to_zip
 def zip_logs(start_time, logs: list):
@@ -56,7 +72,15 @@ def kill_everything(start_time, logs: list):
     print("Killing all processes...")
     zip_logs(start_time, logs)
     print("Zipped all current logs")
-    os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
+
+    system = platform.system()
+    if system == "Windows":
+        subprocess.run(["taskkill","/F", "/PID", str(os.getpid())],
+                       shell = True,
+                       stdout = subprocess.DEVNULL,
+                       stderr = subprocess.DEVNULL)
+    else:
+        os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
 
 
 # Makes a little Tkinter widget to kill everything

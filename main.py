@@ -7,6 +7,7 @@ from src.utils import utils
 from src.vision.vision import Vision
 from src.server.logger import Logger
 from datetime import datetime
+# import platform
 
 MAX_QUEUE_SIZE = 10
 processes = []
@@ -30,12 +31,26 @@ def start_vision_process(frame_queue, vision_arguments, server_logger):
 
 
 def main(server_port, emulator_args, vision_args, video_args, server_logger, client_logger):
-    global processes
+    global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # server_logger = Logger(name="ServerLogger", log_file="server.log")
 
     logs_to_zip = ["server.log"]
-    ip_addr = utils.get_ip_address()
+
+    # ask if Windows or Mac machine
+    ask_windows_or_mac = input("Enter Windows or Mac: \n")
+    # system = platform.system()
+
+    if ask_windows_or_mac == "Windows" or ask_windows_or_mac == "windows":
+    # if system == "Windows":
+        ip_addr = utils.windows_get_ip_address()
+    elif ask_windows_or_mac == "mac" or ask_windows_or_mac == "Mac":
+    # elif system == "iOS":
+        ip_addr = utils.get_ip_address()
+    else:
+        print("Invalid Entry. Terminating...")
+        return 0
+
 
     # vision_arguments = {"stitch": vision_args.get("stitch"), "depth_estimation": vision_args.get("depth_estimation")}
     # for argument in vision_arguments:
