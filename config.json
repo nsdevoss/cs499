@@ -2,18 +2,17 @@
   "emulator_arguments": {
     "enabled": true,
     "stream_enabled": false,
-    "video_name": "chair2"
+    "video_name": "chair"
   },
   "server_port": 9000,
   "video_arguments": {
-    "display": true,
+    "display": false,
     "fps": 30
   },
   "vision_arguments": {
     "stitch": false,
-    "depth_estimation": true,
-    "object_detect": false,
-    "calibration_file": "stereoMap.xml"
+    "depth_estimation": false,
+    "calibration_file": ""
   },
   "camera_parameters": {
     "baseline": 70,

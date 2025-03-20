@@ -6,7 +6,11 @@ from src.utils import utils
 from src.vision.vision import Vision
 from src.server.logger import Logger
 from datetime import datetime
-# import platform
+import platform
+from src.WebServer.webserver import MyServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+
 
 MAX_QUEUE_SIZE = 10
 processes = []
@@ -28,31 +32,38 @@ def start_vision_process(frame_queue, vision_arguments, server_logger):
     vision = Vision(frame_queue=frame_queue, action_arguments=vision_arguments, calibration_file=vision_arguments.get("calibration_file"), server_logger=server_logger)
     vision.start()
 
+def start_webserver(logger):
+    hostName = "0.0.0.0"
+    serverPort = 8080
 
-def main(server_port, emulator_args, vision_args, video_args, server_logger, client_logger):
+    server_obj = MyServer
+    server_obj.set_logger(logger=logger)
+    webServer = HTTPServer((hostName, serverPort), server_obj)
+    webServer.serve_forever()
+
+
+def main(server_port, emulator_args, vision_args, video_args, server_logger, client_logger): # <-- Add webserver args
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     logs_to_zip = ["server.log"]
 
-    # ask if Windows or Mac machine
-    ask_windows_or_mac = input("Enter Windows or Mac: \n")
-    # system = platform.system()
+    system = platform.system()
 
-    if ask_windows_or_mac == "Windows" or ask_windows_or_mac == "windows":
-    # if system == "Windows":
+    # Check if System is Windows or MacOS(Darwin)
+    if system == "Windows":
         ip_addr = utils.windows_get_ip_address()
-    elif ask_windows_or_mac == "mac" or ask_windows_or_mac == "Mac":
-    # elif system == "iOS":
+    elif system == "Darwin":
         ip_addr = utils.get_ip_address()
-    else:
-        print("Invalid Entry. Terminating...")
-        return 0
 
 
     server_logger.get_logger().info(f"Got IP Address: {ip_addr}")
 
     frame_queue = multiprocessing.Queue()
+
+    webserver_process = multiprocessing.Process(target=start_webserver, args=(server_logger,))
+    webserver_process.start()
+    processes.append(webserver_process)
 
     vision_process = multiprocessing.Process(target=start_vision_process, args=(frame_queue, vision_args, server_logger))
     vision_process.start()

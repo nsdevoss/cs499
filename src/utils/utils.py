@@ -3,6 +3,7 @@ import tkinter as tk
 import gc
 import os
 import zipfile
+import socket
 
 MAX_QUEUE_SIZE = 10
 
@@ -22,6 +23,21 @@ def get_ip_address():
 
     except Exception as e:
         print(f"Error retrieving IP: {e}")
+    print("No IP Address Found")
+    return "Unknown"
+
+# Windows get_ip_address() method
+def windows_get_ip_address():
+    try:
+        host_name = socket.gethostname()
+        windows_ip = socket.gethostbyname(host_name)
+        print("Your Windows Computer name is: ")
+        print("Your Windows Computer IP Address is:" + windows_ip)
+        if windows_ip:
+            print(f"Found IP Address: " + windows_ip)
+            return windows_ip
+    except Exception as e:
+        print(f"Error Retrieving Windows IP: {e}")
     print("No IP Address Found")
     return "Unknown"
 
