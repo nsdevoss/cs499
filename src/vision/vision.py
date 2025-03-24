@@ -105,7 +105,7 @@ class Vision:
                                 (filtered_disp[valid_mask] - min_val) / (max_val - min_val) * 255).astype(
                             np.uint8)
 
-                        disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_HSV)
+                        disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_INFERNO)
 
                         if display_frame is None or display_frame.shape[1] != left.shape[1] + disp_colored.shape[1]:
                             display_frame = np.zeros((max(left.shape[0], disp_colored.shape[0]),

@@ -32,18 +32,32 @@ This is the port the server will open on for the camera client to connect to.
 
 ```json
 "vision_arguments": {
-    "stitch": boolean,
-    "depth_estimation": boolean,
-    "calibration_file": string
-  },
+    "enabled": true,
+    "depth_threshold": 0.8,
+    "StereoSGBM_args": {
+      "minDisparity": 0,
+      "numDisparities": 32,
+      "blockSize": 5,
+      "uniquenessRatio": 30,
+      "speckleWindowSize": 100,
+      "speckleRange": 2,
+      "disp12MaxDiff": 1
+    },
+    "scale": 0.5,
+    "calibration_file": "calib_50/calibration_50.npz",
+    "camera_parameters": {
+      "baseline": 0.07,
+      "viewing_angle": 120
+    }
+  }
 ```
-This is for the computations done on the frames in the frame queue. `stitch` determines if the stitching algorithm will be used.
-`depth_estimation` will run the depth estimation computation. And `calibration_file` is the XML calibration file used for the setup.
+This is for the computations done on the frames in the frame queue. `StereoSGB_args` determines the parameters for the StereoSGBM_args for the algorithm.
+`depth_threshold` is the threshold for the depth algorithm on detecting how close things are. `scale` determines the scale of the image size and resolution for the algorithm.
+And `calibration_file` is the NPZ calibration file used for the setup.
 
 ```json
 "camera_parameters": {
     "baseline": float,
-    "focal_length": float,
     "viewing_angle": float
   }
 ```
