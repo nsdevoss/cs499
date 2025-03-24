@@ -6,6 +6,7 @@ from src.utils import utils
 import pickle
 import struct
 import ipaddress
+from src.server.logger import client_logger
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
@@ -21,28 +22,34 @@ Params:
 :param logger: The logger passed into here
 """
 class Emulator:
-    def __init__(self, server_ip, video, stream_enabled, server_port, logger):
+    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, resolution=(2560,720), fps=30):
         self.server_ip = server_ip
         self.server_port = server_port
-        self.logger = logger
         self.shutdown = False
-        # Boilerplate socket set up stuff
+        self.resolution = resolution
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if stream_enabled:
-            self.video_capture = cv2.VideoCapture(0)
+            self.video = cv2.VideoCapture(0)
         else:
             video_path = os.path.join(ROOT_DIR, "assets/videos", f"{video}.mp4")
-            print(f"Video path: {video_path}")
-            self.video = cv2.VideoCapture(video_path)
-
+            client_logger.get_logger().info(f"Video path: {video_path}")
+            if os.path.exists(video_path):
+                self.video = cv2.VideoCapture(video_path)
+            else:
+                client_logger.get_logger().warning(f"Video path doesn't exist, using default video")
+                self.video = cv2.VideoCapture(os.path.join(ROOT_DIR, "assets/videos", "chair2.mp4"))
+        self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
+        self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
+        self.video.set(cv2.CAP_PROP_FPS, fps)
+        self.video.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.connect_to_server()
-        self.logger.get_logger().info("Emulator initialized successfully.")
+        client_logger.get_logger().info("Emulator initialized successfully.")
 
     def connect_to_server(self):
         """
         This is where we connect to the server and check if it is valid before trying
         """
-        log_writer = self.logger.get_logger()
+        log_writer = client_logger.get_logger()
         while True:
             try:
                 log_writer.info(f"Trying address: {self.server_ip} on {self.server_port}")
@@ -76,7 +83,7 @@ class Emulator:
         """
         Sends the emulator video to the server on the port
         """
-        log_writer = self.logger.get_logger()
+        log_writer = client_logger.get_logger()
         frame_counter = 0
         while True:
             try:
@@ -116,12 +123,12 @@ class Emulator:
         log_writer.info("Connection closed.")
 
     def send_video_stream(self):
-        log_writer = self.logger.get_logger()
+        log_writer = client_logger.get_logger()
         while True:
             try:
-                while self.video_capture.isOpened():
+                while self.video.isOpened():
                     # ret is a bool that determines if the frame was read correctly or not, frame is the video frame
-                    ret, frame = self.video_capture.read()
+                    ret, frame = self.video.read()
                     if not ret:
                         break
 
@@ -140,12 +147,12 @@ class Emulator:
                 log_writer.error(f"Error: {e}")
                 break
 
-        self.video_capture.release()
+        self.video.release()
         self.client_socket.close()
         log_writer.info("Client Connection closed.")
 
     def shutdown(self):
-        log_writer = self.logger.get_logger()
+        log_writer = client_logger.get_logger()
         log_writer.info(f"Shutting down emulator...")
         self.client_socket.close()
         self.shutdown = True

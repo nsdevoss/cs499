@@ -11,9 +11,6 @@ class MyServer(BaseHTTPRequestHandler):
 
     logger = None
 
-    def set_logger(self,logger):
-        self.logger = logger
-
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-type", "text/html")

@@ -1,0 +1,4 @@
+Checkerboard Dimensions: 8x6
+Square sizes: 23 mm
+Threshold: 0.2
+Image size: 25

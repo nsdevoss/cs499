@@ -48,3 +48,7 @@ class Logger:
 
     def get_logger(self):
         return self.logger
+
+
+server_logger = Logger(name="ServerLogger", log_file="server.log")
+client_logger = Logger(name="ClientLogger", log_file="client.log")

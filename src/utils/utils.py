@@ -3,7 +3,7 @@ import tkinter as tk
 import gc
 import os
 import zipfile
-import socket
+from src.server.logger import server_logger, client_logger
 
 MAX_QUEUE_SIZE = 10
 
@@ -18,27 +18,12 @@ def get_ip_address():
 
         lines = result.stdout.strip().split("\n")
         if lines:
-            print(f"Found IP Address: {lines[0].split()[1]}")
+            server_logger.get_logger().info(f"LAN WIFI IPv4 Address: {lines[0].split()[1]}")
             return lines[0].split()[1]
 
     except Exception as e:
-        print(f"Error retrieving IP: {e}")
-    print("No IP Address Found")
-    return "Unknown"
-
-# Windows get_ip_address() method
-def windows_get_ip_address():
-    try:
-        host_name = socket.gethostname()
-        windows_ip = socket.gethostbyname(host_name)
-        print("Your Windows Computer name is: ")
-        print("Your Windows Computer IP Address is:" + windows_ip)
-        if windows_ip:
-            print(f"Found IP Address: " + windows_ip)
-            return windows_ip
-    except Exception as e:
-        print(f"Error Retrieving Windows IP: {e}")
-    print("No IP Address Found")
+        server_logger.get_logger().error(f"Error retrieving IP: {e}")
+    server_logger.get_logger().error("No IP Address Found")
     return "Unknown"
 
 
@@ -59,31 +44,31 @@ def zip_logs(start_time, logs: list):
                     base_name = os.path.splitext(log_file)[0]
 
                     zipf.write(log_path, os.path.basename(log_file))
-                    os.rename(log_path, f"ogs/{base_name}_latest.log")
-        print(f"Zipped logs: {logs}")
+                    os.rename(log_path, f"logs/{base_name}_latest.log")
+                    print(log_path)
+        server_logger.get_logger().info(f"Zipped logs: {logs}")
 
     except Exception as e:
-        print(f"Error zipping: {e}")
+        server_logger.get_logger().error(f"Error zipping: {e}")
 
 
 # Kills all the processes in main loop
 def shutdown(start_time, processes, logs: list, root=None):
-    print("Killing all processes...")
+    server_logger.get_logger().info("Starting shutdown, killing all processes...")
     zip_logs(start_time, logs)
     for process in processes:
         obj = getattr(process, 'obj', None)
         if obj and hasattr(obj, 'shutdown'):
             obj.shutdown()
-            print(f"Shutdown called for process {process.pid}")
 
         pid = process.pid
-        print(f"Killed process: {pid}")
+        server_logger.get_logger().info(f"Killed process: {pid}")
         process.terminate()
-    print("Zipped all current logs")
 
     if root:
-        print("Closing Tkinter window...")
+        server_logger.get_logger().info("Closing Tkinter window...")
         root.destroy()
+        server_logger.get_logger().info("Successfully terminated program!")
 
 
 # Makes a little Tkinter widget to kill everything
@@ -99,11 +84,17 @@ def create_killer(start_time, processes, logs: list):
 
 
 def split_frame(frame):
-    print(frame.shape)
-    height, width = frame.shape
-    half_width = width // 2
-    left_frame = frame[:, :half_width]
-    right_frame = frame[:, half_width:]
+    if len(frame.shape) == 2:
+        height, width = frame.shape
+        half_width = width // 2
+        left_frame = frame[:, :half_width]
+        right_frame = frame[:, half_width:]
+    else:
+        height, width, channels = frame.shape
+        half_width = width // 2
+        left_frame = frame[:, :half_width, :]
+        right_frame = frame[:, half_width:, :]
+
     return left_frame, right_frame
 
 

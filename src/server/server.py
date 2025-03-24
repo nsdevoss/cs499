@@ -1,10 +1,11 @@
 import gc
-import os
-import signal
 import socket
 import cv2
 import pickle
 import struct
+import time
+from src.server.logger import server_logger
+from src.utils.utils import split_frame
 
 MAX_QUEUE_SIZE = 10
 
@@ -17,52 +18,44 @@ Params:
 :param host: This is who we are looking for, 0.0.0.0 just means that we are looking for any IP address on the network. You could change this to the client's IP address to directly look for them. (Plz don't do, default is fine)
 :param port: The port we are opening up on this instance. Default doesn't mean anything since we handle all of this in main.py, I'm just too lazy to change the argument order
 :param frame_queue: This passes the frame queue (more on this in main.py and below)
-:param logger: The logger that is passed into here
 """
 
 
-def split_frame(frame):
-    height, width, _ = frame.shape
-    half_width = width // 2
-    left_frame = frame[:, :half_width]
-    right_frame = frame[:, half_width:]
-    return left_frame, right_frame
-
-
 class StreamCameraServer:
-    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None, display=True, fps=60, logger=None):
+    def __init__(self, host="0.0.0.0", port=9000, frame_queue=None, display=True, fps=60):
         self.host = host
         self.port = port
         self.frame_queue = frame_queue
         self.display = display
         self.fps = fps
-        self.logger = logger
+        self.frame_interval = 1.0 / fps
         self.shutdown = False
         # Boilerplate socket stuff
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(5)
-        self.logger.get_logger().info(f"Listening on {self.host}:{self.port}")
+        server_logger.get_logger().info(f"Listening on {self.host}:{self.port}")
 
     def receive_video_stream(self):
-        log_writer = self.logger.get_logger()
+        log_writer = server_logger.get_logger()
         while True:
             log_writer.info("Waiting for a connection...")
             conn, addr = self.server_socket.accept()
-            log_writer.info(f"Connection from {addr}")
+            log_writer.info(f"Got connection from {addr}")
 
             # This just makes an empty byte buffer for incoming data
             data = b""
             payload_size = struct.calcsize("Q")  # This is the first 8 bytes that the server reads from the incoming data
-
+            frame_count = 0
             try:
                 while True:
                     # We get the raw data from the client here
                     while len(data) < payload_size:
                         packet = conn.recv(4096)
                         if not packet:
-                            raise ConnectionResetError("Client disconnected")
+                            log_writer.error(f"No packet received: {packet}")
+                            raise ConnectionResetError("No packet received")
                         data += packet
 
                     packed_msg_size = data[:payload_size]  # This gets the first 8 bytes which contain the frame size
@@ -89,14 +82,14 @@ class StreamCameraServer:
 
                     # We input the frame into the frame queue along with its server port
                     # We do this because when we get the frame out we will know where it came from
-                    left_frame, right_frame = split_frame(frame)
-
+                    frame_count += 1
+                    if frame_count % 2 != 0:
+                        continue
                     if self.frame_queue is not None:
-                        self.frame_queue.put((left_frame, right_frame))
+                        self.frame_queue.put(frame)
 
                     if self.display:
-                        cv2.imshow("Left Camera Feed", left_frame)
-                        cv2.imshow("Right Camera Feed", right_frame)
+                        cv2.imshow("Live Camera Feed", frame)
                         if cv2.waitKey(1) == ord("q"):
                             break
 
@@ -115,14 +108,14 @@ class StreamCameraServer:
             finally:
                 conn.close()
                 cv2.destroyAllWindows()
-                log_writer.info("Connection closed.")
+                log_writer.info(f"Closed socket connection with {addr}.")
 
     # Need to find a way to use this, rn we just KILL everything
     def shutdown(self):
-        self.logger.get_logger().info("Shutting down server")
+        server_logger.get_logger().info("Shutting down server")
         self.server_socket.close()
         self.shutdown = True
-        self.logger.get_logger().info("Successfully shut down server")
+        server_logger.get_logger().info("Successfully shut down server")
 
 
 if __name__ == "__main__":
