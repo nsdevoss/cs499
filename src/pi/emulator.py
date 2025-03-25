@@ -10,19 +10,23 @@ from src.server.logger import client_logger
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
-"""
-Emulator Class
 
-This class is a copy of the Raspberry PI and provides the same functionality but on your machine.
-
-Params:
-:param server_ip: The IP address of your computer for the emulator to connect to
-:param video: The video that will be played on the instance of the emulator.
-:param server_port: The port that the emulator will attempt to connect to on the server
-:param logger: The logger passed into here
-"""
 class Emulator:
-    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, resolution=(2560,720), fps=30):
+    """
+    Emulator Class
+
+    This class is a copy of the Raspberry PI and provides the same functionality but on your machine.
+
+    Params:
+    :param server_ip: The IP address of your computer for the emulator to connect to
+    :param video: The video that will be played on the instance of the emulator.
+    :param stream_enabled: This defines if the emulator will use the external camera rather than load a video to send
+    :param server_port: The port that the emulator will attempt to connect to on the server
+    :param resolution: The video resolution that will be resized to (Might be hardcoded into the raspberry Pi if i can't figure out how to remote exec)
+    :param fps: This fr doesn't really do anything
+    """
+
+    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, resolution=(2560,720), fps=60):
         self.server_ip = server_ip
         self.server_port = server_port
         self.shutdown = False
@@ -38,8 +42,8 @@ class Emulator:
             else:
                 client_logger.get_logger().warning(f"Video path doesn't exist, using default video")
                 self.video = cv2.VideoCapture(os.path.join(ROOT_DIR, "assets/videos", "chair2.mp4"))
-        self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
-        self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
+        # self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
+        # self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
         self.video.set(cv2.CAP_PROP_FPS, fps)
         self.video.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.connect_to_server()
@@ -98,7 +102,7 @@ class Emulator:
                     frame_counter = 0
                     self.video.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-                _, buffer = cv2.imencode('.jpg', frame)  # We compress the image into I think a numpy array
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])  # We compress the image into I think a numpy array
                 data = pickle.dumps(buffer)  # We serialize the frame into a byte stream
                 size = struct.pack("Q", len(data))  # We get the size of the frame and add 8 bytes to the front b/c thats what the server just needs
 

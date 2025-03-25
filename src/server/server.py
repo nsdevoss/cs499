@@ -8,6 +8,7 @@ from src.server.logger import server_logger
 from src.utils.utils import split_frame
 
 MAX_QUEUE_SIZE = 10
+CAMERA_DEFAULT_FPS = 60
 
 """
 Server Class
@@ -39,6 +40,8 @@ class StreamCameraServer:
 
     def receive_video_stream(self):
         log_writer = server_logger.get_logger()
+
+        frame_rate = CAMERA_DEFAULT_FPS / self.fps
         while True:
             log_writer.info("Waiting for a connection...")
             conn, addr = self.server_socket.accept()
@@ -83,7 +86,7 @@ class StreamCameraServer:
                     # We input the frame into the frame queue along with its server port
                     # We do this because when we get the frame out we will know where it came from
                     frame_count += 1
-                    if frame_count % 2 != 0:
+                    if frame_count % frame_rate != 0:
                         continue
                     if self.frame_queue is not None:
                         self.frame_queue.put(frame)

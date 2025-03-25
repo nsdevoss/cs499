@@ -5,24 +5,22 @@ import struct
 import time
 import multiprocessing
 
-"""
-Raspberry PI Class
 
-This is supposed to run on the Raspberry PI, right now we have to figure out how to remote execute this on it.
-IMPORTANT!!!!!: The Raspberry PI and the Laptop(server) need to be on the same WIFI to work.
-
-Params:
-@server_ip: The IP address of your computer for the pi to connect to.
-@server_port: The port that the pi will attempt to connect to on the server.
-@camera_index: The index of the camera that will be used to send, the values are 0 and 2 for each camera, NOT 1!!!! (idk why but 1 doesn't work)
-@logger: The logger passed into here
-"""
 
 class CameraClient:
-    def __init__(self, server_ip, server_port, camera_index: int, logger=None):
+    """
+    Raspberry PI Class
+
+    This is supposed to run on the Raspberry PI, right now we have to figure out how to remote execute this on it.
+    IMPORTANT!!!!!: The Raspberry PI and the Laptop(server) need to be on the same WIFI to work.
+
+    Params:
+    :param server_ip: The IP address of your computer for the pi to connect to.
+    :param server_port: The port that the pi will attempt to connect to on the server.
+    """
+    def __init__(self, server_ip, server_port, camera_index: int):
         self.server_ip = server_ip
         self.server_port = server_port
-        self.logger = logger
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.video_capture = cv2.VideoCapture(camera_index)  # Open the camera
         self.connect_to_server()

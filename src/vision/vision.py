@@ -13,14 +13,14 @@ class Vision:
     The vision class that will handle all the calculations.
 
     Params:
-    :param frame_queue: Frame queue containing frames from both cameras.
-    :param action_arguments: Dictionary defining which functionalities to enable.
-                            {"stitch": False, "depth_estimation": False}
-    :param server_logger: The server logger
+    :param frame_queue: Frame queue containing frames from the cameras that are used FOR THE ALGORITHM ONLY!!!
+    :param vison_args: Dictionary defining the parameters mainly for the depth alrogithm
+    :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, vision_args):
+    def __init__(self, frame_queue, display_queue, vision_args):
         self.frame_queue = frame_queue
+        self.display_queue = display_queue
         self.vision_args = vision_args
         self.calibration_file = os.path.join(CALIBRATION_DIR, self.vision_args.get("calibration_file"))
         # Depth args
@@ -114,6 +114,7 @@ class Vision:
                         display_frame[:left.shape[0], :left.shape[1]] = left
                         display_frame[:disp_colored.shape[0], left.shape[1]:left.shape[1] + disp_colored.shape[1]] = disp_colored
 
+                        self.display_queue.put((frame, disp_colored))
                         cv2.putText(display_frame, f"Disp Range: {min_val:.1f}-{max_val:.1f}", (10, 60),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
@@ -169,3 +170,24 @@ class Vision:
         map2_x, map2_y = cv2.initUndistortRectifyMap(self.cam_matrix, self.dist_coeffs, R2, P2, (w, h), cv2.CV_32FC1)
 
         return map1_x, map1_y, map2_x, map2_y, Q
+
+def detect_close_objects(disp_map, threshold_percent=0.8, min_area=500, max_area=100000):
+        roi_image = cv2.cvtColor(disp_map, cv2.COLOR_GRAY2BGR) if len(disp_map.shape) == 2 else disp_map.copy()
+
+        # Higher values in disparity map = closer objects
+        threshold = int(255 * threshold_percent)
+        _, binary = cv2.threshold(disp_map if len(disp_map.shape) == 2 else cv2.cvtColor(disp_map, cv2.COLOR_BGR2GRAY),
+                                  threshold, 255, cv2.THRESH_BINARY)
+
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        rois = []
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if min_area < area < max_area:
+                x, y, w, h = cv2.boundingRect(contour)
+                rois.append((x, y, w, h))
+                cv2.rectangle(roi_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.putText(roi_image, "CLOSE", (x, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        return roi_image, rois

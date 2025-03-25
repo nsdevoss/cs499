@@ -9,11 +9,27 @@ from datetime import datetime
 from src.WebServer.webserver import MyServer
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from src.server.logger import server_logger, client_logger
+import cv2
 
 
 MAX_QUEUE_SIZE = 10
 processes = []
 
+def play(queue):
+    while True:
+        frame, disp = queue.get()
+        if frame is not None and disp is not None:
+            cv2.imshow("frame",disp)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+        else:
+            print("frame not found")
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            break
+    cv2.destroyAllWindows()
 
 def start_server(port, frame_queue, display, fps):
     local_server = server.StreamCameraServer(port=port, frame_queue=frame_queue, display=display, fps=fps)
@@ -26,8 +42,8 @@ def start_emulator(ip_addr, video, stream_enabled, resolution, port):
     else:
         client.send_video()
 
-def start_vision_process(frame_queue, vision_args):
-    vision = Vision(frame_queue=frame_queue, vision_args=vision_args)
+def start_vision_process(frame_queue, display_queue, vision_args):
+    vision = Vision(frame_queue=frame_queue, display_queue=display_queue, vision_args=vision_args)
     vision.start()
 
 def start_webserver(logger):
@@ -54,14 +70,19 @@ def main(server_port, emulator_args, vision_args, video_args):
         ip_addr = utils.get_ip_address()
 
     frame_queue = multiprocessing.Queue()
+    display_queue = multiprocessing.Queue()
 
     webserver_process = multiprocessing.Process(target=start_webserver, args=(server_logger,))
     webserver_process.start()
     processes.append(webserver_process)
 
-    vision_process = multiprocessing.Process(target=start_vision_process, args=(frame_queue, vision_args))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(frame_queue, display_queue, vision_args))
     vision_process.start()
     processes.append(vision_process)
+    #
+    # play_process = multiprocessing.Process(target=play, args=(display_queue,))
+    # play_process.start()
+    # processes.append(play_process)
 
     server_logger.get_logger().info(f"Starting server on port: {server_port}")
     process = multiprocessing.Process(target=start_server, args=(server_port, frame_queue, video_args.get("display"), video_args.get("fps")), name=f"Server Process: {server_port}")

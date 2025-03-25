@@ -2,16 +2,16 @@
   "emulator_arguments": {
     "enabled": true,
     "stream_enabled": true,
-    "video_name": "char2"
+    "video_name": "chair2"
   },
   "server_port": 9000,
   "video_arguments": {
-    "display": false,
+    "display": true,
     "fps": 60,
-    "resolution": [640, 480]
+    "resolution": [2560,720]
   },
   "vision_arguments": {
-    "enabled": true,
+    "enabled": false,
     "depth_threshold": 0.8,
     "StereoSGBM_args": {
       "minDisparity": 0,
@@ -22,7 +22,7 @@
       "speckleRange": 2,
       "disp12MaxDiff": 1
     },
-    "scale": 0.5,
+    "scale": 0.25,
     "calibration_file": "calib_50/calibration_50.npz",
     "camera_parameters": {
       "baseline": 0.07,
