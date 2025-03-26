@@ -41,7 +41,8 @@ class StreamCameraServer:
     def receive_video_stream(self):
         log_writer = server_logger.get_logger()
 
-        frame_rate = CAMERA_DEFAULT_FPS / self.fps
+        frame_rate = int(CAMERA_DEFAULT_FPS / self.fps)
+        print(f"frame_rate: {frame_rate}")
         while True:
             log_writer.info("Waiting for a connection...")
             conn, addr = self.server_socket.accept()

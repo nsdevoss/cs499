@@ -41,9 +41,9 @@ class Emulator:
                 self.video = cv2.VideoCapture(video_path)
             else:
                 client_logger.get_logger().warning(f"Video path doesn't exist, using default video")
-                self.video = cv2.VideoCapture(os.path.join(ROOT_DIR, "assets/videos", "chair2.mp4"))
-        # self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
-        # self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
+                self.video = cv2.VideoCapture(os.path.join(ROOT_DIR, "assets/videos", "car.mp4"))
+        self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
+        self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
         self.video.set(cv2.CAP_PROP_FPS, fps)
         self.video.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.connect_to_server()
