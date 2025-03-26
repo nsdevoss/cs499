@@ -1,13 +1,17 @@
 {
   "emulator_arguments": {
     "enabled": true,
-    "stream_enabled": true,
-    "video_name": "chair2"
+    "stream_enabled": false,
+    "video_name": "car"
   },
-  "server_port": 9000,
+  "server_arguments": {
+    "port": 9000,
+    "host": "0.0.0.0",
+    "socket_type": "TCP"
+  },
   "video_arguments": {
     "display": true,
-    "fps": 60,
+    "fps": 30,
     "resolution": [2560,720]
   },
   "vision_arguments": {

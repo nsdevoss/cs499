@@ -7,38 +7,41 @@ class Config:
     _config_data = {}
 
     DEFAULT_CONFIG = {
-      "emulator_arguments": {
-        "enabled": True,
-        "stream_enabled": True,
-        "video_name": "cube"
-      },
-      "server_port": 9000,
-      "video_arguments": {
-        "display": True,
-        "fps": 30,
-        "resolution": [2560, 720]
-      },
-      "vision_arguments": {
-        "enabled": False,
-        "depth_threshold": 0.8,
-        "StereoSGBM_args": {
-          "minDisparity": 0,
-          "numDisparities": 32,
-          "blockSize": 5,
-          "uniquenessRatio": 15,
-          "speckleWindowSize": 100,
-          "speckleRange": 2,
-          "disp12MaxDiff": 1
+        "emulator_arguments": {
+            "enabled": True,
+            "stream_enabled": False,
+            "video_name": "car"
         },
-        "scale": 0.5,
-        "calibration_file": "calib_50/calibration_50.npz",
-        "camera_parameters": {
-          "baseline": 0.07,
-          "viewing_angle": 120
+        "server_arguments": {
+            "port": 9000,
+            "host": "0.0.0.0",
+            "socket_type": "TCP"
+        },
+        "video_arguments": {
+            "display": False,
+            "fps": 30,
+            "resolution": [2560, 720]
+        },
+        "vision_arguments": {
+            "enabled": False,
+            "depth_threshold": 0.8,
+            "StereoSGBM_args": {
+                "minDisparity": 0,
+                "numDisparities": 32,
+                "blockSize": 5,
+                "uniquenessRatio": 30,
+                "speckleWindowSize": 100,
+                "speckleRange": 2,
+                "disp12MaxDiff": 1
+            },
+            "scale": 0.25,
+            "calibration_file": "calib_50/calibration_50.npz",
+            "camera_parameters": {
+                "baseline": 0.07,
+                "viewing_angle": 120
+            }
         }
-      }
     }
-
 
     @classmethod
     def get_config_path(cls):

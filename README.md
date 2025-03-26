@@ -26,9 +26,13 @@ This is for the emulator.`enabled` dictates if the emulator is enabled.
 `video_name` is the name of the video used under `assets/videos`.
 
 ```json
-"server_port": int
+"server_arguments": {
+    "port": 9000,
+    "host": "0.0.0.0",
+    "socket_type": "TCP"
+  },
 ```
-This is the port the server will open on for the camera client to connect to.
+Currently, this is only for the StreamCameraServer but we can easily change it for both sockets that will open.
 
 ```json
 "vision_arguments": {
