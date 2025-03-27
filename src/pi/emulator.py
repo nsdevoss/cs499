@@ -26,12 +26,23 @@ class Emulator:
     :param fps: This fr doesn't really do anything
     """
 
-    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, resolution=(2560,720), fps=60):
+    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, socket_type="TCP", encode_quality=70, resolution=(2560,720), fps=60):
         self.server_ip = server_ip
         self.server_port = server_port
         self.shutdown = False
+        self.socket_type = socket_type
         self.resolution = resolution
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.encode_quality = encode_quality
+        try:
+            assert self.socket_type == "TCP" or self.socket_type == "UDP", f'Socket type must be "TCP" or "UDP", got: {self.socket_type}'
+            if self.socket_type == "TCP":
+                socket_type = socket.SOCK_STREAM
+            elif self.socket_type == "UDP":
+                socket_type = socket.SOCK_DGRAM
+        except AssertionError as e:
+            client_logger.get_logger().error(e)
+
+        self.client_socket = socket.socket(socket.AF_INET, socket_type)
         if stream_enabled:
             self.video = cv2.VideoCapture(0)
         else:
@@ -54,34 +65,38 @@ class Emulator:
         This is where we connect to the server and check if it is valid before trying
         """
         log_writer = client_logger.get_logger()
-        while True:
-            try:
-                log_writer.info(f"Trying address: {self.server_ip} on {self.server_port}")
-
+        if self.socket_type == "TCP":
+            while True:
                 try:
-                    # Validate IP and Port
-                    assert isinstance(self.server_port, int), f"Port must be an integer, got {type(self.server_port)}"
-                    assert 1 <= self.server_port <= 65535, f"Port {self.server_port} is out of range"
-                    ipaddress.ip_address(self.server_ip)
-                except AssertionError as e:
-                    log_writer.error(str(e))
-                    raise e
+                    log_writer.info(f"Trying address: {self.server_ip} on {self.server_port}")
 
-                while not is_port_open(self.server_ip, self.server_port):
-                    log_writer.warning(f"Port {self.server_port} not open yet, chill...")
-                    time.sleep(2)
+                    try:
+                        # Validate IP and Port
+                        assert isinstance(self.server_port, int), f"Port must be an integer, got {type(self.server_port)}"
+                        assert 1 <= self.server_port <= 65535, f"Port {self.server_port} is out of range"
+                        ipaddress.ip_address(self.server_ip)
+                    except AssertionError as e:
+                        log_writer.error(str(e))
+                        raise e
 
-                self.client_socket.connect((self.server_ip, self.server_port))
-                log_writer.info(f"Connected to socket")
-                break
+                    while not is_port_open(self.server_ip, self.server_port):
+                        log_writer.warning(f"Port {self.server_port} not open yet, chill...")
+                        time.sleep(2)
 
-            except ConnectionRefusedError:
-                log_writer.error("Connection refused, retrying...")
-                time.sleep(3)
+                    self.client_socket.connect((self.server_ip, self.server_port))
+                    log_writer.info(f"Connected to socket")
+                    break
 
-            except OSError as e:
-                log_writer.error(f"OSError: {e}, retrying...")
-                time.sleep(3)
+                except ConnectionRefusedError:
+                    log_writer.error("Connection refused, retrying...")
+                    time.sleep(3)
+
+                except OSError as e:
+                    log_writer.error(f"OSError: {e}, retrying...")
+                    time.sleep(3)
+
+        elif self.socket_type == "UDP":
+            log_writer.info(f"UDP client already set up")
 
     def send_video(self):
         """
@@ -102,11 +117,23 @@ class Emulator:
                     frame_counter = 0
                     self.video.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])  # We compress the image into I think a numpy array
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.encode_quality])  # We compress the image into I think a numpy array
                 data = pickle.dumps(buffer)  # We serialize the frame into a byte stream
                 size = struct.pack("Q", len(data))  # We get the size of the frame and add 8 bytes to the front b/c thats what the server just needs
 
-                self.client_socket.sendall(size + data)
+                if self.socket_type == "TCP":
+                    self.client_socket.sendall(size + data)
+
+                elif self.socket_type == "UDP":
+                    size = len(data)
+                    while size > 0:
+                        chunk_size = min(size, 65507)  # Calculate chunk size
+                        chunk = data[:chunk_size]  # Take the chunk of the data
+                        size -= chunk_size  # Reduce the remaining size
+                        data = data[chunk_size:]  # Update the data with the remaining portion
+
+                        # Send the chunk over UDP
+                        self.client_socket.sendto(chunk, (self.server_ip, self.server_port))
                 del data
 
                 if self.shutdown:
@@ -139,12 +166,15 @@ class Emulator:
                     _, buffer = cv2.imencode('.jpg', frame)  # Encode the frame into a numpy array into the buffer
                     data = pickle.dumps(buffer)  # Serialize the encoded frame
                     size = struct.pack("Q", len(data))  # Get the size of the frame to send
-                    self.client_socket.sendall(size + data)  # Send it
+                    if self.socket_type == "TCP":
+                        self.client_socket.sendall(size + data)
+                    elif self.socket_type == "UDP":
+                        self.client_socket.sendto(size + data, (self.server_ip, self.server_port))
 
             except (BrokenPipeError, ConnectionResetError) as e:
                 log_writer.error(f"Connection lost: {e}, Reconnecting...")
                 self.client_socket.close()
-                self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # We don't care if it is UDP here bcz only TCP needs a connection
                 self.connect_to_server()
 
             except Exception as e:

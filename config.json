@@ -2,7 +2,8 @@
   "emulator_arguments": {
     "enabled": true,
     "stream_enabled": false,
-    "video_name": "shovel"
+    "video_name": "shovel",
+    "encode_quality": 70
   },
   "server_arguments": {
     "port": 9000,
@@ -10,12 +11,12 @@
     "socket_type": "TCP"
   },
   "video_arguments": {
-    "display": true,
+    "display": false,
     "fps": 30,
     "resolution": [2560,720]
   },
   "vision_arguments": {
-    "enabled": false,
+    "enabled": true,
     "calibration_file": "calib_50/calibration_50.npz",
     "scale": 0.5,
     "depth_threshold": 0.8,

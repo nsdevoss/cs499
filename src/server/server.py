@@ -34,7 +34,8 @@ class SocketServer:
         self.server_socket = socket.socket(socket.AF_INET, socket_type)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
-        if self.socket_type == "TCP": self.server_socket.listen(5)
+        if self.socket_type == "TCP":
+            self.server_socket.listen(5)
         server_logger.get_logger().info(f"Listening on {self.host}:{self.port}")
 
     def shutdown(self):

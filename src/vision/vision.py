@@ -115,6 +115,7 @@ class Vision:
                         display_frame[:disp_colored.shape[0], left.shape[1]:left.shape[1] + disp_colored.shape[1]] = disp_colored
 
                         self.display_queue.put((frame, disp_colored))
+                        cv2.imshow("Disparity", display_frame)
 
                         key = cv2.waitKey(1) & 0xFF
                         if key == ord('q'):

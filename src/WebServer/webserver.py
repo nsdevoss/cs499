@@ -8,8 +8,6 @@ hostName = "0.0.0.0"
 serverPort = 8080
 
 class MyServer(BaseHTTPRequestHandler):
-
-
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
@@ -21,6 +19,7 @@ class MyServer(BaseHTTPRequestHandler):
         self.wfile.write(bytes("</body></html>", "utf-8"))
 
         webserver_logger.get_logger().info("Hello from webserver.py logger")
+
 
 if __name__ == "__main__":
     webServer = HTTPServer((hostName, serverPort), MyServer)

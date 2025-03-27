@@ -18,12 +18,13 @@ all the configurations are stored.
 "emulator_arguments": {
   "enabled": boolean,
   "stream_enabled": boolean,
-  "video_name": string
+  "video_name": string,
+  "encode_quality": int
 }
 ```
 This is for the emulator.`enabled` dictates if the emulator is enabled. 
 `stream_enabled` dictates if there will be a camera feed opened for the emulator stream. If `false`, then the video will be used instead.
-`video_name` is the name of the video used under `assets/videos`.
+`video_name` is the name of the video used under `assets/videos`. `encode_quality` determines what quality the frame will be sent from the client, 0-100 where 100 being the best quality.
 
 ```json
 "server_arguments": {

@@ -35,8 +35,14 @@ class StreamCameraServer(SocketServer):
         frame_rate = int(CAMERA_DEFAULT_FPS / self.fps)
         while True:
             log_writer.info("Waiting for a connection...")
-            conn, addr = self.server_socket.accept()
-            log_writer.info(f"Got connection from {addr}")
+
+            if self.socket_type == "TCP":
+                conn, addr = self.server_socket.accept()
+                log_writer.info(f"Got connection from {addr}")
+            elif self.socket_type == "UDP":
+                conn = self.server_socket
+                addr = None
+                log_writer.info(f"Waiting for some UDP data on {self.host}:{self.port}")
 
             # This just makes an empty byte buffer for incoming data
             data = b""
@@ -46,19 +52,34 @@ class StreamCameraServer(SocketServer):
                 while True:
                     # We get the raw data from the client here
                     while len(data) < payload_size:
-                        packet = conn.recv(4096)
+                        if self.socket_type == "TCP":
+                            packet = conn.recv(4096)
+                        elif self.socket_type == "UDP":
+                            packet, addr = conn.recvfrom(4096)
                         if not packet:
                             log_writer.error(f"No packet received: {packet}")
                             raise ConnectionResetError("No packet received")
+                        data += packet
+
+                    # This makes sure that the whole frame is being received
+                    while len(data) < payload_size:
+                        if self.socket_type == "TCP":
+                            packet = conn.recv(4096)
+                        elif self.socket_type == "UDP":
+                            packet, addr = conn.recvfrom(4096)
+                        if not packet:
+                            raise ConnectionResetError("Client disconnected")
                         data += packet
 
                     packed_msg_size = data[:payload_size]  # This gets the first 8 bytes which contain the frame size
                     data = data[payload_size:]  # This is everything else
                     msg_size = struct.unpack("Q", packed_msg_size)[0]  # This unpacks the frame size to get the actual size of the incoming frame
 
-                    # This makes sure that the whole frame is being received
                     while len(data) < msg_size:
-                        packet = conn.recv(4096)
+                        if self.socket_type == "TCP":
+                            packet = conn.recv(4096)
+                        elif self.socket_type == "UDP":
+                            packet, addr = conn.recvfrom(4096)
                         if not packet:
                             raise ConnectionResetError("Client disconnected")
                         data += packet
