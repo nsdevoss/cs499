@@ -15,11 +15,12 @@ import cv2
 MAX_QUEUE_SIZE = 10
 processes = []
 
+
 def play(queue):
     while True:
-        frame, disp = queue.get()
-        if frame is not None and disp is not None:
-            cv2.imshow("frame",disp)
+        frame = queue.get()
+        if frame is not None:
+            cv2.imshow("frame",frame)
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
@@ -31,6 +32,7 @@ def play(queue):
             break
     cv2.destroyAllWindows()
 
+
 def start_server(server_arguments, frame_queue, display, fps):
     host = server_arguments.get("host")
     port = server_arguments.get("port")
@@ -39,6 +41,7 @@ def start_server(server_arguments, frame_queue, display, fps):
     local_server = StreamCameraServer(host=host, port=port, socket_type=socket_type, frame_queue=frame_queue, display=display, fps=fps)
     local_server.receive_video_stream()
 
+
 def start_emulator(ip_addr, video, stream_enabled, resolution, port):
     client = emulator.Emulator(ip_addr, video, stream_enabled, resolution, port)
     if stream_enabled:
@@ -46,15 +49,16 @@ def start_emulator(ip_addr, video, stream_enabled, resolution, port):
     else:
         client.send_video()
 
+
 def start_vision_process(frame_queue, display_queue, vision_args):
     vision = Vision(frame_queue=frame_queue, display_queue=display_queue, vision_args=vision_args)
     vision.start()
 
-def start_webserver(logger):
+
+def start_webserver():
     hostName = "0.0.0.0"
     serverPort = 8080
 
-    MyServer.logger = logger
     webServer = HTTPServer((hostName, serverPort), MyServer)
     webServer.serve_forever()
 
@@ -63,7 +67,7 @@ def main(server_arguments, emulator_args, vision_args, video_args):
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    logs_to_zip = ["server.log"]
+    logs_to_zip = ["server.log", "webserver.log"]
 
     system = platform.system()
 
@@ -82,16 +86,18 @@ def main(server_arguments, emulator_args, vision_args, video_args):
 
     vision_process = multiprocessing.Process(target=start_vision_process, args=(frame_queue, display_queue, vision_args))
     vision_process.start()
+    server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)
-
-    play_process = multiprocessing.Process(target=play, args=(display_queue,))
-    play_process.start()
-    processes.append(play_process)
+    if video_args.get("display"):
+        play_process = multiprocessing.Process(target=play, args=(frame_queue,))
+        play_process.start()
+        server_logger.get_logger().info(f"Started display process with pid: {play_process.pid}")
+        processes.append(play_process)
 
     server_logger.get_logger().info(f"Starting server on port: {server_arguments.get("port")}")
     process = multiprocessing.Process(target=start_server, args=(server_arguments, frame_queue, video_args.get("display"), video_args.get("fps")), name=f"Server Process: {server_arguments.get("port")}")
-
     process.start()
+    server_logger.get_logger().info(f"Started server process with pid: {process.pid}")
     processes.append(process)
 
     if emulator_args.get("enabled"):
@@ -99,6 +105,7 @@ def main(server_arguments, emulator_args, vision_args, video_args):
         server_logger.get_logger().info("Running Emulated Client...")
         emu_process = multiprocessing.Process(target=start_emulator, args=(ip_addr, emulator_args.get("video_name"), emulator_args.get("stream_enabled"), server_arguments.get("port"), video_args.get("resolution")), name="Emulator Process")
         emu_process.start()
+        server_logger.get_logger().info(f"Started emulator process with pid: {emu_process.pid}")
         processes.append(emu_process)
 
     utils.create_killer(start_time=start_time, processes=processes, logs=logs_to_zip)

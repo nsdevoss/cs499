@@ -3,6 +3,7 @@ import tkinter as tk
 import gc
 import os
 import zipfile
+import socket
 from src.server.logger import server_logger, client_logger
 
 MAX_QUEUE_SIZE = 10
@@ -26,6 +27,19 @@ def get_ip_address():
     server_logger.get_logger().error("No IP Address Found")
     return "Unknown"
 
+def windows_get_ip_address():
+    try:
+        host_name = socket.gethostname()
+        windows_ip = socket.gethostbyname(host_name)
+        print("Your Windows Computer name is: ")
+        print("Your Windows Computer IP Address is:" + windows_ip)
+        if windows_ip:
+            print(f"Found IP Address: " + windows_ip)
+            return windows_ip
+    except Exception as e:
+        print(f"Error Retrieving Windows IP: {e}")
+    print("No IP Address Found")
+    return "Unknown"
 
 # Zips all the current logs, we get the logs from main.py in logs_to_zip
 def zip_logs(start_time, logs: list):

@@ -33,7 +33,6 @@ class StreamCameraServer(SocketServer):
         log_writer = server_logger.get_logger()
 
         frame_rate = int(CAMERA_DEFAULT_FPS / self.fps)
-        print(f"frame_rate: {frame_rate}")
         while True:
             log_writer.info("Waiting for a connection...")
             conn, addr = self.server_socket.accept()
@@ -82,11 +81,6 @@ class StreamCameraServer(SocketServer):
                         continue
                     if self.frame_queue is not None:
                         self.frame_queue.put(frame)
-
-                    if self.display:
-                        cv2.imshow("Live Camera Feed", frame)
-                        if cv2.waitKey(1) == ord("q"):
-                            break
 
                     del frame, frame_data
                     gc.collect()

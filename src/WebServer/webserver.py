@@ -2,14 +2,13 @@
 # Add args to main() function
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import time
+from src.server.logger import webserver_logger
 
 hostName = "0.0.0.0"
 serverPort = 8080
 
 class MyServer(BaseHTTPRequestHandler):
 
-    logger = None
 
     def do_GET(self):
         self.send_response(200)
@@ -21,7 +20,7 @@ class MyServer(BaseHTTPRequestHandler):
         self.wfile.write(bytes("<p>This is an example web server.</p>", "utf-8"))
         self.wfile.write(bytes("</body></html>", "utf-8"))
 
-        self.logger.get_logger().info("Hello from webserver.py logger")
+        webserver_logger.get_logger().info("Hello from webserver.py logger")
 
 if __name__ == "__main__":
     webServer = HTTPServer((hostName, serverPort), MyServer)

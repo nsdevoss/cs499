@@ -52,3 +52,4 @@ class Logger:
 
 server_logger = Logger(name="ServerLogger", log_file="server.log")
 client_logger = Logger(name="ClientLogger", log_file="client.log")
+webserver_logger = Logger(name="WebServerLogger", log_file="webserver.log")

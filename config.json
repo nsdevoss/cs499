@@ -1,8 +1,8 @@
 {
   "emulator_arguments": {
     "enabled": true,
-    "stream_enabled": true,
-    "video_name": "backyard"
+    "stream_enabled": false,
+    "video_name": "shovel"
   },
   "server_arguments": {
     "port": 9000,
@@ -10,18 +10,18 @@
     "socket_type": "TCP"
   },
   "video_arguments": {
-    "display": false,
-    "fps": 10,
+    "display": true,
+    "fps": 30,
     "resolution": [2560,720]
   },
   "vision_arguments": {
-    "enabled": true,
+    "enabled": false,
     "calibration_file": "calib_50/calibration_50.npz",
-    "scale": 0.2,
+    "scale": 0.5,
     "depth_threshold": 0.8,
     "StereoSGBM_args": {
       "minDisparity": 0,
-      "numDisparities": 64,
+      "numDisparities": 32,
       "blockSize": 5,
       "uniquenessRatio": 30,
       "speckleWindowSize": 100,
