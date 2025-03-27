@@ -1,6 +1,6 @@
 import multiprocessing
 import platform
-from src.server.stream_camera_server import StreamCameraServer
+from src.server.camera_server import StreamCameraServer
 from src.server.config import Config
 from src.pi import emulator
 from src.utils import utils
@@ -83,10 +83,10 @@ def main(server_arguments, emulator_args, vision_args, video_args):
     vision_process = multiprocessing.Process(target=start_vision_process, args=(frame_queue, display_queue, vision_args))
     vision_process.start()
     processes.append(vision_process)
-    #
-    # play_process = multiprocessing.Process(target=play, args=(display_queue,))
-    # play_process.start()
-    # processes.append(play_process)
+
+    play_process = multiprocessing.Process(target=play, args=(display_queue,))
+    play_process.start()
+    processes.append(play_process)
 
     server_logger.get_logger().info(f"Starting server on port: {server_arguments.get("port")}")
     process = multiprocessing.Process(target=start_server, args=(server_arguments, frame_queue, video_args.get("display"), video_args.get("fps")), name=f"Server Process: {server_arguments.get("port")}")

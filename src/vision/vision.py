@@ -30,13 +30,13 @@ class Vision:
 
     def start(self):
         if self.vision_args.get("enabled"):
-            self.load_calibration()
             self.depth_estimation()
         else:
             return
 
     def depth_estimation(self):
         try:
+            scale = self.vision_args.get("scale", 1.0)
             stereo = cv2.StereoSGBM_create(
                 minDisparity=self.vision_args.get("StereoSGBM_args").get("minDisparity"),
                 numDisparities=self.vision_args.get("StereoSGBM_args").get("numDisparities"),
@@ -49,6 +49,7 @@ class Vision:
                 P2=32 * 3 * self.vision_args.get("StereoSGBM_args").get("blockSize") ** 2,
                 mode=cv2.STEREO_SGBM_MODE_HH
             )
+            self.load_calibration(scale)
 
             right_matcher = cv2.ximgproc.createRightMatcher(stereo)
             wls_filter = cv2.ximgproc.createDisparityWLSFilter(stereo)
@@ -56,10 +57,11 @@ class Vision:
             wls_filter.setSigmaColor(1.5)
 
             frame = self.frame_queue.get()
+            print(frame.shape)
             h, w = frame.shape[:2]
             mid = w // 2
             if self.cam_matrix is not None and self.dist_coeffs is not None:
-                map1_x, map1_y, map2_x, map2_y, Q = self.generate_rectify_maps((mid, h))
+                map1_x, map1_y, map2_x, map2_y, Q = self.generate_rectify_maps((mid, h), scale)
                 server_logger.get_logger().info("Rectification maps generated")
             else:
                 raise ValueError(f"cam_matrix is set to: {self.cam_matrix}, dist_coeffs is set to: {self.dist_coeffs}")
@@ -73,21 +75,19 @@ class Vision:
                         mid = w // 2
                         left_frame, right_frame = frame[:, :mid], frame[:, mid:]
 
+                        left_frame = cv2.resize(left_frame, (int(mid * scale), int(h * scale)))
+                        right_frame = cv2.resize(right_frame, (int(mid * scale), int(h * scale)))
+
                         left = cv2.remap(left_frame, map1_x, map1_y, cv2.INTER_LINEAR)
                         right = cv2.remap(right_frame, map2_x, map2_y, cv2.INTER_LINEAR)
 
                         gray_left = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
                         gray_right = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
 
-                        small_left = cv2.resize(gray_left, None, fx=self.vision_args.get("scale"),
-                                                fy=self.vision_args.get("scale"), interpolation=cv2.INTER_AREA)
-                        small_right = cv2.resize(gray_right, None, fx=self.vision_args.get("scale"),
-                                                 fy=self.vision_args.get("scale"), interpolation=cv2.INTER_AREA)
+                        disp_left = stereo.compute(gray_left, gray_right).astype(np.float32) / 16.0
+                        disp_right = right_matcher.compute(gray_right, gray_left).astype(np.float32) / 16.0
 
-                        disp_left = stereo.compute(small_left, small_right).astype(np.float32) / 16.0
-                        disp_right = right_matcher.compute(small_right, small_left).astype(np.float32) / 16.0
-
-                        filtered_disp = wls_filter.filter(disp_left, small_left, disparity_map_right=disp_right)
+                        filtered_disp = wls_filter.filter(disp_left, gray_left, disparity_map_right=disp_right)
                         filtered_disp = cv2.resize(filtered_disp, (gray_left.shape[1], gray_left.shape[0]),
                                                    interpolation=cv2.INTER_LINEAR)
 
@@ -115,10 +115,6 @@ class Vision:
                         display_frame[:disp_colored.shape[0], left.shape[1]:left.shape[1] + disp_colored.shape[1]] = disp_colored
 
                         self.display_queue.put((frame, disp_colored))
-                        cv2.putText(display_frame, f"Disp Range: {min_val:.1f}-{max_val:.1f}", (10, 60),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
-                        cv2.imshow("Stereo Vision", display_frame)
 
                         key = cv2.waitKey(1) & 0xFF
                         if key == ord('q'):
@@ -140,21 +136,32 @@ class Vision:
         # Womp womp
         return
 
-    def load_calibration(self):
+    def load_calibration(self, scale=1.0):
         if not os.path.exists(self.calibration_file):
             server_logger.get_logger().error(f"No valid calibration file found: {self.calibration_file}")
         try:
             data = np.load(self.calibration_file)
             cam_matrix = data['camMatrix']
             dist_coeffs = data['distCoeff']
-            server_logger.get_logger().info(f"Successfully loaded calibration file: {self.calibration_file}")
+            if scale != 1.0:
+                server_logger.get_logger().info(f"Scaling calibration matrix by factor: {scale}")
+
+                cam_matrix[0, 0] *= scale  # fx
+                cam_matrix[1, 1] *= scale  # fy
+                cam_matrix[0, 2] *= scale  # cx
+                cam_matrix[1, 2] *= scale  # cy
+
             self.cam_matrix = cam_matrix
             self.dist_coeffs = dist_coeffs
+            server_logger.get_logger().info(f"Calibration file loaded and scaled: {self.calibration_file}")
         except Exception as e:
             server_logger.get_logger().error(f"Error loading calibration file: {e}")
 
-    def generate_rectify_maps(self, image_size):
+    def generate_rectify_maps(self, image_size, scale=1.0):
         w, h = image_size
+
+        w = int(w * scale)
+        h = int(h * scale)
 
         R = np.eye(3)
         T = np.array([self.vision_args.get("camera_parameters").get("baseline"), 0, 0])

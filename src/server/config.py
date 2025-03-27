@@ -15,7 +15,7 @@ class Config:
         "server_arguments": {
             "port": 9000,
             "host": "0.0.0.0",
-            "socket_type": "TCP"
+            "socket_type": "UDP"
         },
         "video_arguments": {
             "display": False,
