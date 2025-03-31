@@ -26,7 +26,7 @@ class Emulator:
     :param fps: This fr doesn't really do anything
     """
 
-    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, socket_type="TCP", encode_quality=70, resolution=(2560,720), fps=60):
+    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, socket_type="TCP", encode_quality=70, resolution=(2560,720)):
         self.server_ip = server_ip
         self.server_port = server_port
         self.shutdown = False
@@ -53,17 +53,15 @@ class Emulator:
             else:
                 client_logger.get_logger().warning(f"Video path doesn't exist, using default video")
                 self.video = cv2.VideoCapture(os.path.join(ROOT_DIR, "assets/videos", "car.mp4"))
-        self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
-        self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
-        self.video.set(cv2.CAP_PROP_FPS, fps)
+        # self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
+        # self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
+        # self.video.set(cv2.CAP_PROP_FPS, fps)
         self.video.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.connect_to_server()
         client_logger.get_logger().info("Emulator initialized successfully.")
 
     def connect_to_server(self):
-        """
-        This is where we connect to the server and check if it is valid before trying
-        """
+        # We connect to the server here and do some validating things
         log_writer = client_logger.get_logger()
         if self.socket_type == "TCP":
             while True:
@@ -96,14 +94,101 @@ class Emulator:
                     time.sleep(3)
 
         elif self.socket_type == "UDP":
-            log_writer.info(f"UDP client already set up")
+            # For UDP, we don't need to establish a connection, just validate the IP and port
+            try:
+                assert isinstance(self.server_port, int), f"Port must be an integer, got {type(self.server_port)}"
+                assert 1 <= self.server_port <= 65535, f"Port {self.server_port} is out of range"
+                ipaddress.ip_address(self.server_ip)
+
+                # Ping the server
+                self.client_socket.sendto(b"PING", (self.server_ip, self.server_port))
+                log_writer.info(f"UDP client ready to send to {self.server_ip}:{self.server_port}")
+            except AssertionError as e:
+                log_writer.error(str(e))
+                raise e
+
+    def send_video_stream(self):
+        """
+        Streams live video from the camera to the server.
+        """
+        log_writer = client_logger.get_logger()
+
+        # Max UDP packet size
+        MAX_UDP_PACKET = 8192  # 8KB
+
+        log_writer.info("Starting live video stream...")
+
+        while True:
+            try:
+                ret, frame = self.video.read()
+                if not ret:
+                    log_writer.error("Failed to capture frame from camera.")
+                    break
+
+                if self.socket_type == "UDP":
+                    scale_factor = 0.5  # Reduce size for UDP, might make configurable idk
+                    frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+
+                encode_quality = self.encode_quality if self.socket_type == "TCP" else max(30, self.encode_quality - 20)
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, encode_quality])
+
+                # Serialize the frame
+                data = pickle.dumps(buffer)
+
+                if self.socket_type == "TCP":
+                    size = struct.pack("Q", len(data))
+                    self.client_socket.sendall(size + data)
+
+                elif self.socket_type == "UDP":
+                    # UDP: Break into chunks with sequence numbers
+                    chunk_size = MAX_UDP_PACKET - 20  # Allow for header
+                    chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+                    # Send number of chunks first
+                    header = struct.pack("QQ", len(chunks), len(data))
+                    self.client_socket.sendto(header, (self.server_ip, self.server_port))
+
+                    # Send each chunk
+                    for i, chunk in enumerate(chunks):
+                        packet = struct.pack("Q", i) + chunk
+                        try:
+                            self.client_socket.sendto(packet, (self.server_ip, self.server_port))
+                            time.sleep(0.001)
+                        except OSError as e:
+                            if "Message too long" in str(e):
+                                log_writer.error(f"Packet too large: {len(packet)} bytes.")
+                                break
+                            else:
+                                raise e
+
+                if self.shutdown:
+                    break
+
+            except (BrokenPipeError, ConnectionResetError) as e:
+                log_writer.error(f"Connection lost: {e}. Reconnecting...")
+                if self.socket_type == "TCP":
+                    self.client_socket.close()
+                    self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.connect_to_server()
+
+            except Exception as e:
+                log_writer.error(f"Streaming error: {e}")
+                break
+
+        self.video.release()
+        self.client_socket.close()
+        log_writer.info("Video stream closed.")
 
     def send_video(self):
         """
-        Sends the emulator video to the server on the port
+        Sends the emulator video to the server on the port, same thing as feed but changed up the way we get frames
+        See send_video_stream() to see how we do it, but this is basically a copy of that
         """
         log_writer = client_logger.get_logger()
         frame_counter = 0
+
+        MAX_UDP_PACKET = 8192  # 8KB
+
         while True:
             try:
                 ret, frame = self.video.read()  # Load the video, ret is a bool that states if the frame was read correctly
@@ -117,65 +202,50 @@ class Emulator:
                     frame_counter = 0
                     self.video.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.encode_quality])  # We compress the image into I think a numpy array
-                data = pickle.dumps(buffer)  # We serialize the frame into a byte stream
-                size = struct.pack("Q", len(data))  # We get the size of the frame and add 8 bytes to the front b/c thats what the server just needs
+                if self.socket_type == "UDP":
+                    scale_factor = 0.5
+                    frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+
+                encode_quality = self.encode_quality if self.socket_type == "TCP" else max(30, self.encode_quality - 20)
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, encode_quality])
+                data = pickle.dumps(buffer)
 
                 if self.socket_type == "TCP":
+                    size = struct.pack("Q", len(data))
                     self.client_socket.sendall(size + data)
 
                 elif self.socket_type == "UDP":
-                    size = len(data)
-                    while size > 0:
-                        chunk_size = min(size, 65507)  # Calculate chunk size
-                        chunk = data[:chunk_size]  # Take the chunk of the data
-                        size -= chunk_size  # Reduce the remaining size
-                        data = data[chunk_size:]  # Update the data with the remaining portion
+                    chunk_size = MAX_UDP_PACKET - 20
+                    chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
 
-                        # Send the chunk over UDP
-                        self.client_socket.sendto(chunk, (self.server_ip, self.server_port))
-                del data
+                    header = struct.pack("QQ", len(chunks), len(data))
+                    self.client_socket.sendto(header, (self.server_ip, self.server_port))
+
+                    for i, chunk in enumerate(chunks):
+                        packet = struct.pack("Q", i) + chunk
+                        try:
+                            self.client_socket.sendto(packet, (self.server_ip, self.server_port))
+                            time.sleep(0.001)
+                        except OSError as e:
+                            if "Message too long" in str(e):
+                                log_writer.error(
+                                    f"Packet too large: {len(packet)} bytes. Try reducing quality or resolution.")
+                                break
+                            else:
+                                raise e
 
                 if self.shutdown:
                     break
 
+                time.sleep(1.0 / self.video.get(cv2.CAP_PROP_FPS))
+
             except (BrokenPipeError, ConnectionResetError) as e:
                 log_writer.error(f"Connection lost: {e}. Reconnecting...")
-                self.client_socket.close()
-                self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.connect_to_server()
-
-            except Exception as e:
-                log_writer.error(f"Error: {e}")
-                break
-
-        self.video.release()  # Release video because we are good programmers and care about our resources
-        self.client_socket.close()  # CLose connection to server
-        log_writer.info("Connection closed.")
-
-    def send_video_stream(self):
-        log_writer = client_logger.get_logger()
-        while True:
-            try:
-                while self.video.isOpened():
-                    # ret is a bool that determines if the frame was read correctly or not, frame is the video frame
-                    ret, frame = self.video.read()
-                    if not ret:
-                        break
-
-                    _, buffer = cv2.imencode('.jpg', frame)  # Encode the frame into a numpy array into the buffer
-                    data = pickle.dumps(buffer)  # Serialize the encoded frame
-                    size = struct.pack("Q", len(data))  # Get the size of the frame to send
-                    if self.socket_type == "TCP":
-                        self.client_socket.sendall(size + data)
-                    elif self.socket_type == "UDP":
-                        self.client_socket.sendto(size + data, (self.server_ip, self.server_port))
-
-            except (BrokenPipeError, ConnectionResetError) as e:
-                log_writer.error(f"Connection lost: {e}, Reconnecting...")
-                self.client_socket.close()
-                self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # We don't care if it is UDP here bcz only TCP needs a connection
-                self.connect_to_server()
+                if self.socket_type == "TCP":
+                    self.client_socket.close()
+                    self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.connect_to_server()
+                # For UDP, we can just continue bcz it's connectionless so no need for a handshake
 
             except Exception as e:
                 log_writer.error(f"Error: {e}")
@@ -191,7 +261,6 @@ class Emulator:
         self.client_socket.close()
         self.shutdown = True
         log_writer.info(f"Successfully shut down emulator")
-
 
 
 def is_port_open(ip, port):

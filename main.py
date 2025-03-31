@@ -16,29 +16,30 @@ MAX_QUEUE_SIZE = 10
 processes = []
 
 
-def play(queue):
+def play(display_queue):
     while True:
-        frame = queue.get()
-        if frame is not None:
-            cv2.imshow("frame",frame)
+        if display_queue is not None and not display_queue.empty():
+            frame, disp = display_queue.get()
+            print("Frame taken from display queue: DISPLAY")
+            if frame is not None:
+                cv2.imshow("Display", disp)
+            else:
+                print("Display frame not found")
 
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-        else:
-            print("frame not found")
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
+
     cv2.destroyAllWindows()
 
 
-def start_server(server_arguments, frame_queue, display, fps):
+
+def start_server(server_arguments,vision_queue, fps):
     host = server_arguments.get("host")
     port = server_arguments.get("port")
     socket_type = server_arguments.get("socket_type")
 
-    local_server = StreamCameraServer(host=host, port=port, socket_type=socket_type, frame_queue=frame_queue, display=display, fps=fps)
+    local_server = StreamCameraServer(host=host, port=port, socket_type=socket_type, vision_queue=vision_queue, fps=fps)
     local_server.receive_video_stream()
 
 
@@ -51,8 +52,8 @@ def start_emulator(ip_addr, video, stream_enabled, socket_type, encode_quality, 
         client.send_video()
 
 
-def start_vision_process(frame_queue, display_queue, vision_args):
-    vision = Vision(frame_queue=frame_queue, display_queue=display_queue, vision_args=vision_args)
+def start_vision_process(vision_queue, display_queue, vision_args):
+    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, vision_args=vision_args)
     vision.start()
 
 
@@ -78,26 +79,33 @@ def main(server_arguments, emulator_args, vision_args, video_args):
     elif system == "Darwin":
         ip_addr = utils.get_ip_address()
 
-    frame_queue = multiprocessing.Queue()
-    display_queue = multiprocessing.Queue()
+    # I am going to assume we will always run vision and not just display the frame so no need for 3 queues only 2
+    display_queue = None
+    vision_queue = None
+
+    if vision_args.get("enabled"):
+        vision_queue = multiprocessing.Queue()
+    if video_args.get("display") and vision_args.get("enabled"):
+        display_queue = multiprocessing.Queue()
+
 
     webserver_process = multiprocessing.Process(target=start_webserver)
     webserver_process.start()
     processes.append(webserver_process)
 
-    vision_process = multiprocessing.Process(target=start_vision_process, args=(frame_queue, display_queue, vision_args))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, vision_args))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)
 
     if video_args.get("display"):
-        play_process = multiprocessing.Process(target=play, args=(frame_queue,))
+        play_process = multiprocessing.Process(target=play, args=(display_queue,))
         play_process.start()
         server_logger.get_logger().info(f"Started display process with pid: {play_process.pid}")
         processes.append(play_process)
 
     server_logger.get_logger().info(f"Starting server on port: {server_arguments.get("port")}")
-    server_process = multiprocessing.Process(target=start_server, args=(server_arguments, frame_queue, video_args.get("display"), video_args.get("fps")), name=f"Server Process: {server_arguments.get("port")}")
+    server_process = multiprocessing.Process(target=start_server, args=(server_arguments, vision_queue, video_args.get("fps")), name=f"Server Process: {server_arguments.get("port")}")
     server_process.start()
     server_logger.get_logger().info(f"Started server process with pid: {server_process.pid}")
     processes.append(server_process)

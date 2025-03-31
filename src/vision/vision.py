@@ -114,12 +114,11 @@ class Vision:
                         display_frame[:left.shape[0], :left.shape[1]] = left
                         display_frame[:disp_colored.shape[0], left.shape[1]:left.shape[1] + disp_colored.shape[1]] = disp_colored
 
-                        self.display_queue.put((frame, disp_colored))
-                        cv2.imshow("Disparity", display_frame)
+                        if self.display_queue is not None:
+                            self.display_queue.put((frame, display_frame))
 
-                        key = cv2.waitKey(1) & 0xFF
-                        if key == ord('q'):
-                            break
+                        del frame, disp_colored, display_frame
+
 
                 except queue.Empty:
                     server_logger.get_logger().warning("Frame queue is empty.")

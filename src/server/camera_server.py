@@ -2,6 +2,7 @@ import gc
 import socket
 import cv2
 import pickle
+import msgpack
 import struct
 from src.server.logger import server_logger
 from src.server.server import SocketServer
@@ -21,8 +22,8 @@ Params:
 """
 
 class StreamCameraServer(SocketServer):
-    def __init__(self, host="0.0.0.0", port=9000, socket_type="TCP", frame_queue=None, display=True, fps=60):
-        self.frame_queue = frame_queue
+    def __init__(self, host="0.0.0.0", port=9000, socket_type="TCP", vision_queue=None, display=True, fps=60):
+        self.vision_queue = vision_queue
         self.display = display
         self.fps = fps
         self.frame_interval = 1.0 / fps
@@ -39,88 +40,176 @@ class StreamCameraServer(SocketServer):
             if self.socket_type == "TCP":
                 conn, addr = self.server_socket.accept()
                 log_writer.info(f"Got connection from {addr}")
+                self._handle_tcp_stream(conn, addr, frame_rate)
             elif self.socket_type == "UDP":
                 conn = self.server_socket
-                addr = None
                 log_writer.info(f"Waiting for some UDP data on {self.host}:{self.port}")
+                self._handle_udp_stream(conn, frame_rate)
 
-            # This just makes an empty byte buffer for incoming data
-            data = b""
-            payload_size = struct.calcsize("Q")  # This is the first 8 bytes that the server reads from the incoming data
-            frame_count = 0
-            try:
-                while True:
-                    # We get the raw data from the client here
-                    while len(data) < payload_size:
-                        if self.socket_type == "TCP":
-                            packet = conn.recv(4096)
-                        elif self.socket_type == "UDP":
-                            packet, addr = conn.recvfrom(4096)
-                        if not packet:
-                            log_writer.error(f"No packet received: {packet}")
-                            raise ConnectionResetError("No packet received")
-                        data += packet
+    def _handle_tcp_stream(self, conn, addr, frame_rate):
+        log_writer = server_logger.get_logger()
+        data = b""
+        payload_size = struct.calcsize("Q")
+        frame_count = 0
 
-                    # This makes sure that the whole frame is being received
-                    while len(data) < payload_size:
-                        if self.socket_type == "TCP":
-                            packet = conn.recv(4096)
-                        elif self.socket_type == "UDP":
-                            packet, addr = conn.recvfrom(4096)
-                        if not packet:
-                            raise ConnectionResetError("Client disconnected")
-                        data += packet
+        try:
+            while True:
+                # We get the raw data from the client here
+                while len(data) < payload_size:
+                    packet = conn.recv(4096)
+                    if not packet:
+                        log_writer.error(f"No packet received")
+                        raise ConnectionResetError("No packet received")
+                    data += packet
 
-                    packed_msg_size = data[:payload_size]  # This gets the first 8 bytes which contain the frame size
-                    data = data[payload_size:]  # This is everything else
-                    msg_size = struct.unpack("Q", packed_msg_size)[0]  # This unpacks the frame size to get the actual size of the incoming frame
+                # Extract the message size
+                packed_msg_size = data[:payload_size]
+                data = data[payload_size:]
+                msg_size = struct.unpack("Q", packed_msg_size)[0]
 
-                    while len(data) < msg_size:
-                        if self.socket_type == "TCP":
-                            packet = conn.recv(4096)
-                        elif self.socket_type == "UDP":
-                            packet, addr = conn.recvfrom(4096)
-                        if not packet:
-                            raise ConnectionResetError("Client disconnected")
-                        data += packet
+                # Get the full message
+                while len(data) < msg_size:
+                    packet = conn.recv(4096)
+                    if not packet:
+                        raise ConnectionResetError("Client disconnected")
+                    data += packet
 
-                    frame_data = data[:msg_size]  # This is the received frame data
-                    data = data[msg_size:]  # This removes the extracted frame data from "data"
+                frame_data = data[:msg_size]
+                data = data[msg_size:]
 
-                    frame = pickle.loads(frame_data)  # Deserialize the frame into a format OpenCV can process
-                    frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)  # THIS IS THE ACTUAL FRAME IMAGE!!!!!!!!!!!
-                    # obj = vision.Vision(frame)
+                # Process the frame
+                frame = pickle.loads(frame_data)
+                frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
-                    if frame is None:
-                        log_writer.warning("Received an empty or corrupted frame.")
+                if frame is None:
+                    log_writer.warning("Received an empty or corrupted frame.")
+                    continue
+
+                # This is where our FPS comes from
+                frame_count += 1
+                if frame_count % frame_rate != 0:
+                    continue
+
+                if self.vision_queue is not None:
+                    self.vision_queue.put(frame)
+
+                del frame, frame_data
+                gc.collect()
+
+                # This is for cleanup but it doesnt really do anyting
+                if len(data) > 10_000_000:
+                    data = b""
+
+                if self.shutdown:
+                    break
+
+        except (ConnectionResetError, BrokenPipeError) as e:
+            log_writer.error(f"{e}. Client disconnected. Waiting for a new connection...")
+        except Exception as e:
+            log_writer.error(f"{e}")
+        finally:
+            if conn and conn != self.server_socket:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            log_writer.info(f"Closed socket connection with {addr}.")
+
+    def _handle_udp_stream(self, conn, frame_rate):
+        log_writer = server_logger.get_logger()
+        frame_count = 0
+
+        # Dictionary to store the fragments from the different clients
+        fragments = {}
+        frame_sizes = {}
+
+        try:
+            while True:
+                try:
+                    # First packet should contain header information
+                    packet, addr = conn.recvfrom(65536)
+
+                    if packet == b"PING":
+                        log_writer.info(f"Received ping from {addr}")
                         continue
 
-                    # We input the frame into the frame queue along with its server port
-                    # We do this because when we get the frame out we will know where it came from
-                    frame_count += 1
-                    if frame_count % frame_rate != 0:
+                    # Check if it's a header packet (contains number of chunks and total size)
+                    if len(packet) == 16:  # 8 bytes for num_chunks + 8 bytes for total_size
+                        num_chunks, total_size = struct.unpack("QQ", packet)
+                        log_writer.info(f"Expecting {num_chunks} chunks for a {total_size} byte frame from {addr}")
+
+                        client_key = f"{addr[0]}:{addr[1]}"
+                        fragments[client_key] = {}
+                        frame_sizes[client_key] = (num_chunks, total_size)
                         continue
-                    if self.frame_queue is not None:
-                        self.frame_queue.put(frame)
 
-                    del frame, frame_data
-                    gc.collect()
+                    # If we get here... then it's a data packet
+                    # get the first sequence number from the packet(first 8 bytes)
+                    seq_num = struct.unpack("Q", packet[:8])[0]
+                    chunk = packet[8:]
 
-                    if self.shutdown:
-                        break
+                    client_key = f"{addr[0]}:{addr[1]}"
+                    if client_key not in fragments:
+                        log_writer.warning(f"Received chunk but no header from {addr}")
+                        continue
 
-            except (ConnectionResetError, BrokenPipeError) as e:
-                log_writer.error(f"{e}. Client disconnected. Waiting for a new connection...")
+                    fragments[client_key][seq_num] = chunk
 
-            except Exception as e:
-                log_writer.error(f"{e}")
+                    # Check if we have all chunks
+                    if client_key in frame_sizes and len(fragments[client_key]) == frame_sizes[client_key][0]:
+                        num_chunks, total_size = frame_sizes[client_key]
 
-            finally:
-                conn.close()
-                cv2.destroyAllWindows()
-                log_writer.info(f"Closed socket connection with {addr}.")
+                        sorted_chunks = [fragments[client_key][i] for i in range(num_chunks) if
+                                         i in fragments[client_key]]
 
-    # Need to find a way to use this, rn we just KILL everything
+                        # If we're missing chunks then we skip the frame
+                        if len(sorted_chunks) != num_chunks:
+                            log_writer.warning(f"Missing chunks for frame: {len(sorted_chunks)}/{num_chunks}")
+                            fragments[client_key] = {}
+                            continue
+
+                        frame_data = b"".join(sorted_chunks)
+
+                        # Process the frame (Might optimize later bcz pickle is slow)
+                        try:
+                            frame = pickle.loads(frame_data)
+                            frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+
+                            if frame is None:
+                                log_writer.warning("Received an empty or corrupted frame.")
+                                fragments[client_key] = {}
+                                continue
+
+                            frame_count += 1
+                            if frame_count % frame_rate != 0:
+                                fragments[client_key] = {}
+                                continue
+
+                            if self.vision_queue is not None:
+                                self.vision_queue.put(frame)
+
+                            # Cleanup
+                            fragments[client_key] = {}
+
+                            del frame, frame_data
+                            gc.collect()
+
+                        except Exception as e:
+                            log_writer.error(f"Error processing frame: {e}")
+                            fragments[client_key] = {}
+
+                except socket.timeout:
+                    pass
+
+                except Exception as e:
+                    log_writer.error(f"UDP receive error: {e}")
+
+                if self.shutdown:
+                    break
+
+        except Exception as e:
+            log_writer.error(f"UDP stream error: {e}")
+
     def shutdown(self):
         server_logger.get_logger().info("Shutting down server")
         self.server_socket.close()
