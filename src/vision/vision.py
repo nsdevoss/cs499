@@ -2,6 +2,7 @@ import cv2
 import queue
 import numpy as np
 import os
+import time
 from src.server.logger import server_logger
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
@@ -28,10 +29,11 @@ class Vision:
         self.cam_matrix = None
         self.dist_coeffs = None
 
-        self.highlight_min_dist = self.vision_args.get("distance_args").get("min_dist", 0.25)
-        self.highlight_max_dist = self.vision_args.get("distance_args").get("max_dist", 0.5)
+        self.highlight_min_dist = self.vision_args.get("distance_args").get("min_dist")
+        self.highlight_max_dist = self.vision_args.get("distance_args").get("max_dist")
         self.highlight_color = tuple(int(c) for c in self.vision_args.get("distance_args").get("color"))
-        self.highlight_alpha = self.vision_args.get("distance_args").get("alpha", 0.4)
+        self.highlight_alpha = self.vision_args.get("distance_args").get("alpha")
+        self.highlight_min_area = self.vision_args.get("distance_args").get("min_area")
 
     def start(self):
         if self.vision_args.get("enabled"):
@@ -71,6 +73,8 @@ class Vision:
             else:
                 raise ValueError(f"cam_matrix is set to: {self.cam_matrix}, dist_coeffs is set to: {self.dist_coeffs}")
 
+            prev_time = time.time()  # Store the initial timestamp
+            frame_count = 0
             while True:
                 try:
                     frame = self.frame_queue.get()
@@ -110,7 +114,7 @@ class Vision:
                                 (filtered_disp[valid_mask] - min_val) / (max_val - min_val) * 255).astype(
                             np.uint8)
 
-                        distance_map = self.disparity_to_distance(filtered_disp, Q)
+                        distance_map = disparity_to_distance(filtered_disp, Q)
                         highlighted_frame = self.highlight_distance_range(left, distance_map,
                                                                           self.highlight_min_dist,
                                                                           self.highlight_max_dist)
@@ -127,6 +131,15 @@ class Vision:
                         display_frame[:disp_colored.shape[0],
                         highlighted_frame.shape[1]:highlighted_frame.shape[1] + disp_colored.shape[1]] = disp_colored
 
+                        frame_count += 1
+                        elapsed_time = time.time() - prev_time
+                        if elapsed_time > 1:
+                            fps = frame_count / elapsed_time
+                            prev_time = time.time()
+                            frame_count = 0
+
+                            fps_text = f"FPS: {fps:.2f}"
+                            cv2.putText(display_frame, fps_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         if self.display_queue is not None:
                             self.display_queue.put((frame, display_frame))
 
@@ -184,16 +197,7 @@ class Vision:
 
         return map1_x, map1_y, map2_x, map2_y, Q
 
-    def disparity_to_distance(self, disparity, Q):
-        valid_mask = (disparity > 0.1)
-
-        points_3d = cv2.reprojectImageTo3D(disparity, Q)
-        distance_map = points_3d[:, :, 2]
-        distance_map[~valid_mask] = np.nan
-
-        return distance_map
-
-    def highlight_distance_range(self, frame, distance_map, min_dist, max_dist, min_area=500):
+    def highlight_distance_range(self, frame, distance_map, min_dist, max_dist):
         result = frame.copy()
         valid_pixels = ~np.isnan(distance_map)
 
@@ -207,8 +211,18 @@ class Vision:
         # We find contours to filter out what we highlight
         contours, _ = cv2.findContours(range_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
-            if cv2.contourArea(contour) >= min_area:
+            if cv2.contourArea(contour) >= self.highlight_min_area:
                 cv2.drawContours(result, [contour], -1, self.highlight_color, 2)
                 cv2.fillPoly(result, [contour], self.highlight_color)
 
         return cv2.addWeighted(result, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)
+
+
+def disparity_to_distance(disparity, Q):
+    valid_mask = (disparity > 0.1)
+
+    points_3d = cv2.reprojectImageTo3D(disparity, Q)
+    distance_map = points_3d[:, :, 2]
+    distance_map[~valid_mask] = np.nan
+
+    return distance_map

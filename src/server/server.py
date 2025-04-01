@@ -1,8 +1,6 @@
 import socket
 from src.server.logger import server_logger
 
-MAX_QUEUE_SIZE = 10
-CAMERA_DEFAULT_FPS = 60
 
 """
 SocketServer Class
@@ -25,17 +23,14 @@ class SocketServer:
         socket_type = None
         try:
             assert self.socket_type == "TCP" or self.socket_type == "UDP", f'Socket type must be "TCP" or "UDP", got: {self.socket_type}'
-            if self.socket_type == "TCP":
-                socket_type = socket.SOCK_STREAM
-            elif self.socket_type == "UDP":
-                socket_type = socket.SOCK_DGRAM
+            socket_type = socket.SOCK_STREAM if self.socket_type == "TCP" else socket.SOCK_DGRAM
         except AssertionError as e:
             server_logger.get_logger().error(e)
         self.server_socket = socket.socket(socket.AF_INET, socket_type)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
         if self.socket_type == "TCP":
-            self.server_socket.listen(5)
+            self.server_socket.listen(1)
         server_logger.get_logger().info(f"Listening on {self.host}:{self.port}")
 
     def shutdown(self):

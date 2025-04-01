@@ -10,20 +10,26 @@ class Config:
         "emulator_arguments": {
             "enabled": True,
             "stream_enabled": False,
-            "video_name": "car"
+            "video_name": "shovel",
+            "encode_quality": 10
         },
         "server_arguments": {
             "port": 9000,
             "host": "0.0.0.0",
-            "socket_type": "UDP"
+            "socket_type": "TCP"
         },
         "video_arguments": {
-            "display": False,
+            "display": True,
             "fps": 30,
-            "resolution": [2560, 720]
+            "resolution": [
+                2560,
+                720
+            ]
         },
         "vision_arguments": {
-            "enabled": False,
+            "enabled": True,
+            "calibration_file": "calib_50/calibration_50.npz",
+            "scale": 0.2,
             "depth_threshold": 0.8,
             "StereoSGBM_args": {
                 "minDisparity": 0,
@@ -34,11 +40,16 @@ class Config:
                 "speckleRange": 2,
                 "disp12MaxDiff": 1
             },
-            "scale": 0.25,
-            "calibration_file": "calib_50/calibration_50.npz",
             "camera_parameters": {
                 "baseline": 0.07,
                 "viewing_angle": 120
+            },
+            "distance_args": {
+                "max_dist": 0.5,
+                "min_dist": 0,
+                "color": [0, 255, 255],
+                "alpha": 0.5,
+                "min_area": 800
             }
         }
     }

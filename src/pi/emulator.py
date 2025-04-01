@@ -108,12 +108,9 @@ class Emulator:
                 raise e
 
     def send_video_stream(self):
-        """
-        Streams live video from the camera to the server.
-        """
         log_writer = client_logger.get_logger()
 
-        # Max UDP packet size
+        # Max UDP packet size so that we can account for the network
         MAX_UDP_PACKET = 8192  # 8KB
 
         log_writer.info("Starting live video stream...")
@@ -126,34 +123,54 @@ class Emulator:
                     break
 
                 if self.socket_type == "UDP":
-                    scale_factor = 0.5  # Reduce size for UDP, might make configurable idk
+                    scale_factor = 0.5  # Reduce size for UDP to be more efficient
                     frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
 
-                encode_quality = self.encode_quality if self.socket_type == "TCP" else max(30, self.encode_quality - 20)
-                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, encode_quality])
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.encode_quality])  # Write to a JPEG and reduce quality
 
                 # Serialize the frame
                 data = pickle.dumps(buffer)
 
                 if self.socket_type == "TCP":
+                    """
+                    A TCP packet is structured like [Size of data][DATA]. The first 8 bytes of the packet say how big the data will be.
+                    To make a packet, we need to add this size to the first 8 bytes of our packet so the server will know how to decode it and what to expect.
+                    Then we attach the actual data and send it across to the server.
+                    
+                    That was easy, now lets see how UDP does it......
+                    """
                     size = struct.pack("Q", len(data))
                     self.client_socket.sendall(size + data)
 
                 elif self.socket_type == "UDP":
-                    # UDP: Break into chunks with sequence numbers
-                    chunk_size = MAX_UDP_PACKET - 20  # Allow for header
-                    chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+                    """
+                    A UDP packet is structured similarly to a TCP except that in TCP, both sides know what to expect. Think of a phone call
+                    UDP just sends data and does not need to hear back from the other side. Think of sending a letter
+                    
+                    Since UDP has a size limit of 65536 bytes per packet we limit to 8KB for safety.
+                    We break down the frame into chunks with sequence numbers so each chunk is small enough to be sent over the network
+                    Here is an example of what a UDP packet sequence looks like:
+                    Example:                Packet 1 [Header]  → [Num Chunks: 4] [Total Size: 65536 bytes]
+                                            Packet 2 [Chunk 1] → [Sequence Number: 0] [Data]
+                                            Packet 3 [Chunk 2] → [Sequence Number: 1] [Data]
+                                            Packet 4 [Chunk 3] → [Sequence Number: 2] [Data]
+                                            Packet 5 [Chunk 4] → [Sequence Number: 3] [Data]
+                    Since UDP does not guarantee packet order, or even the packet at all! Each frame is split up into chunks
+                    The first sent packet tells the server the number of chunks the frame was split into, and the total size of the frame.
+                    We send these over to the server while it builds all of them up until it receives the specified number of chunks.
+                    """
+                    chunk_size = MAX_UDP_PACKET - 20  # Header will be 16 bytes, so we have an error buffer of 2
+                    chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]  # We split the frame up into its chunks with sequence numbers
 
-                    # Send number of chunks first
-                    header = struct.pack("QQ", len(chunks), len(data))
-                    self.client_socket.sendto(header, (self.server_ip, self.server_port))
+                    header = struct.pack("QQ", len(chunks), len(data))  # This is the header where we declare the number of chunks and the total size of the frame
+                    self.client_socket.sendto(header, (self.server_ip, self.server_port))  # We send the header first, in the above example this is Packet 1
 
-                    # Send each chunk
+                    # For each chunk we send a packet, the first 8 bytes is the sequence number and the rest is the data
+                    # Example: Packet 2 [Chunk 1] → [Sequence Number: 0] [Data]
                     for i, chunk in enumerate(chunks):
-                        packet = struct.pack("Q", i) + chunk
+                        packet = struct.pack("Q", i) + chunk  # This is the packet [Number][Data]
                         try:
                             self.client_socket.sendto(packet, (self.server_ip, self.server_port))
-                            time.sleep(0.001)
                         except OSError as e:
                             if "Message too long" in str(e):
                                 log_writer.error(f"Packet too large: {len(packet)} bytes.")
@@ -187,7 +204,7 @@ class Emulator:
         log_writer = client_logger.get_logger()
         frame_counter = 0
 
-        MAX_UDP_PACKET = 8192  # 8KB
+        MAX_UDP_PACKET = 49152  # 8KB
 
         while True:
             try:
@@ -202,9 +219,9 @@ class Emulator:
                     frame_counter = 0
                     self.video.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-                if self.socket_type == "UDP":
-                    scale_factor = 0.5
-                    frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+                # if self.socket_type == "UDP":
+                #     scale_factor = 0.5
+                #     frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
 
                 encode_quality = self.encode_quality if self.socket_type == "TCP" else max(30, self.encode_quality - 20)
                 _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, encode_quality])

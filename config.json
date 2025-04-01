@@ -1,9 +1,9 @@
 {
   "emulator_arguments": {
     "enabled": true,
-    "stream_enabled": true,
-    "video_name": "flag1",
-    "encode_quality": 70
+    "stream_enabled": false,
+    "video_name": "shovel",
+    "encode_quality": 10
   },
   "server_arguments": {
     "port": 9000,
@@ -12,7 +12,7 @@
   },
   "video_arguments": {
     "display": true,
-    "fps": 20,
+    "fps": 30,
     "resolution": [
       2560,
       720
@@ -21,7 +21,7 @@
   "vision_arguments": {
     "enabled": true,
     "calibration_file": "calib_50/calibration_50.npz",
-    "scale": 0.25,
+    "scale": 0.2,
     "depth_threshold": 0.8,
     "StereoSGBM_args": {
       "minDisparity": 0,
@@ -37,10 +37,11 @@
       "viewing_angle": 120
     },
     "distance_args": {
-      "max_dist": 0.6,
-      "min_dist": 0.25,
-      "color": [0,255,255],
-      "alpha": 0.4
+      "max_dist": 0.5,
+      "min_dist": 0,
+      "color": [12,237,16],
+      "alpha": 0.75,
+      "min_area": 800
     }
   }
 }
