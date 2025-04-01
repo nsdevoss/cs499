@@ -9,6 +9,7 @@ from src.server.server import SocketServer
 
 MAX_QUEUE_SIZE = 10
 CAMERA_DEFAULT_FPS = 60
+MAX_UDP_PACKET = 65000
 
 """
 StreamCameraServer Class
@@ -147,6 +148,10 @@ class StreamCameraServer(SocketServer):
                     # get the first sequence number from the packet(first 8 bytes)
                     seq_num = struct.unpack("Q", packet[:8])[0]
                     chunk = packet[8:]
+
+                    if len(chunk) > MAX_UDP_PACKET:
+                        log_writer.error(f"Chunk too large: {len(chunk)} bytes. Dropping...")
+                        continue
 
                     client_key = f"{addr[0]}:{addr[1]}"
                     if client_key not in fragments:
