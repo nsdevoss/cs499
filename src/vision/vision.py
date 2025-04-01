@@ -28,6 +28,11 @@ class Vision:
         self.cam_matrix = None
         self.dist_coeffs = None
 
+        self.highlight_min_dist = self.vision_args.get("distance_args").get("min_dist", 0.25)
+        self.highlight_max_dist = self.vision_args.get("distance_args").get("max_dist", 0.5)
+        self.highlight_color = tuple(int(c) for c in self.vision_args.get("distance_args").get("color"))
+        self.highlight_alpha = self.vision_args.get("distance_args").get("alpha", 0.4)
+
     def start(self):
         if self.vision_args.get("enabled"):
             self.depth_estimation()
@@ -105,14 +110,22 @@ class Vision:
                                 (filtered_disp[valid_mask] - min_val) / (max_val - min_val) * 255).astype(
                             np.uint8)
 
+                        distance_map = self.disparity_to_distance(filtered_disp, Q)
+                        highlighted_frame = self.highlight_distance_range(left, distance_map,
+                                                                          self.highlight_min_dist,
+                                                                          self.highlight_max_dist)
+
                         disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_INFERNO)
 
-                        if display_frame is None or display_frame.shape[1] != left.shape[1] + disp_colored.shape[1]:
-                            display_frame = np.zeros((max(left.shape[0], disp_colored.shape[0]),
-                                                      left.shape[1] + disp_colored.shape[1], 3), dtype=np.uint8)
+                        if display_frame is None or display_frame.shape[1] != highlighted_frame.shape[1] + \
+                                disp_colored.shape[1]:
+                            display_frame = np.zeros((max(highlighted_frame.shape[0], disp_colored.shape[0]),
+                                                      highlighted_frame.shape[1] + disp_colored.shape[1], 3),
+                                                     dtype=np.uint8)
 
-                        display_frame[:left.shape[0], :left.shape[1]] = left
-                        display_frame[:disp_colored.shape[0], left.shape[1]:left.shape[1] + disp_colored.shape[1]] = disp_colored
+                        display_frame[:highlighted_frame.shape[0], :highlighted_frame.shape[1]] = highlighted_frame
+                        display_frame[:disp_colored.shape[0],
+                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + disp_colored.shape[1]] = disp_colored
 
                         if self.display_queue is not None:
                             self.display_queue.put((frame, display_frame))
@@ -128,13 +141,6 @@ class Vision:
         except Exception as e:
             server_logger.get_logger().error(f"Error during depth estimation: {e}")
             return
-
-    def object_detect(self):
-        pass
-
-    def export(self):
-        # Womp womp
-        return
 
     def load_calibration(self, scale=1.0):
         if not os.path.exists(self.calibration_file):
@@ -178,23 +184,31 @@ class Vision:
 
         return map1_x, map1_y, map2_x, map2_y, Q
 
-def detect_close_objects(disp_map, threshold_percent=0.8, min_area=500, max_area=100000):
-        roi_image = cv2.cvtColor(disp_map, cv2.COLOR_GRAY2BGR) if len(disp_map.shape) == 2 else disp_map.copy()
+    def disparity_to_distance(self, disparity, Q):
+        valid_mask = (disparity > 0.1)
 
-        # Higher values in disparity map = closer objects
-        threshold = int(255 * threshold_percent)
-        _, binary = cv2.threshold(disp_map if len(disp_map.shape) == 2 else cv2.cvtColor(disp_map, cv2.COLOR_BGR2GRAY),
-                                  threshold, 255, cv2.THRESH_BINARY)
+        points_3d = cv2.reprojectImageTo3D(disparity, Q)
+        distance_map = points_3d[:, :, 2]
+        distance_map[~valid_mask] = np.nan
 
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        rois = []
+        return distance_map
+
+    def highlight_distance_range(self, frame, distance_map, min_dist, max_dist, min_area=500):
+        result = frame.copy()
+        valid_pixels = ~np.isnan(distance_map)
+
+        range_mask = np.zeros_like(distance_map, dtype=np.uint8)
+        in_range = (distance_map >= min_dist) & (distance_map <= max_dist) & valid_pixels
+        range_mask[in_range] = 1
+
+        kernel = np.ones((5, 5), np.uint8)
+        range_mask = cv2.dilate(range_mask, kernel, iterations=1)
+
+        # We find contours to filter out what we highlight
+        contours, _ = cv2.findContours(range_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
-            area = cv2.contourArea(contour)
-            if min_area < area < max_area:
-                x, y, w, h = cv2.boundingRect(contour)
-                rois.append((x, y, w, h))
-                cv2.rectangle(roi_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                cv2.putText(roi_image, "CLOSE", (x, y - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            if cv2.contourArea(contour) >= min_area:
+                cv2.drawContours(result, [contour], -1, self.highlight_color, 2)
+                cv2.fillPoly(result, [contour], self.highlight_color)
 
-        return roi_image, rois
+        return cv2.addWeighted(result, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)
