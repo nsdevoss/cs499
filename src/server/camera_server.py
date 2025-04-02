@@ -1,13 +1,13 @@
 import gc
 import socket
 import cv2
-import pickle
+import numpy as np
 import struct
 from src.server.logger import server_logger
 from src.server.server import SocketServer
 
 CAMERA_DEFAULT_FPS = 60
-MAX_UDP_PACKET = 1048576
+MAX_UDP_PACKET = 65536
 
 """
 StreamCameraServer Class
@@ -80,8 +80,8 @@ class StreamCameraServer(SocketServer):
                 data = data[msg_size:]
 
                 # Process the frame
-                frame = pickle.loads(frame_data)
-                frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+                frame = cv2.imdecode(np.frombuffer(frame_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+
 
                 if frame is None:
                     log_writer.warning("Received an empty or corrupted frame.")
@@ -140,9 +140,11 @@ class StreamCameraServer(SocketServer):
         try:
             while True:
                 try:
-                    conn.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576)  # Set to 64 KB or more
+                    conn.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576)
 
-                    packet, addr = conn.recvfrom(1048576)  # We expect at most 65536 bytes coming in, we get this packet and who sent it
+                    conn.settimeout(0.5)
+
+                    packet, addr = conn.recvfrom(65536)  # We expect at most 65536 bytes coming in, we get this packet and who sent it
 
                     if packet == b"PING":                # On the client we PING the server to make sure it is alive before we send
                         log_writer.info(f"Received ping from {addr}")
@@ -199,8 +201,7 @@ class StreamCameraServer(SocketServer):
 
                         # Process the frame (Might optimize later bcz pickle is slow)
                         try:
-                            frame = pickle.loads(frame_data)
-                            frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+                            frame = cv2.imdecode(np.frombuffer(frame_data, dtype=np.uint8), cv2.IMREAD_COLOR)
 
                             if frame is None:
                                 log_writer.warning("Received an empty or corrupted frame.")

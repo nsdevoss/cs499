@@ -3,13 +3,12 @@ import time
 import cv2
 import os
 from src.utils import utils
-import pickle
 import struct
 import ipaddress
 from src.server.logger import client_logger
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-
+MAX_UDP_PACKET = 8216
 
 class Emulator:
     """
@@ -110,9 +109,6 @@ class Emulator:
     def send_video_stream(self):
         log_writer = client_logger.get_logger()
 
-        # Max UDP packet size so that we can account for the network
-        MAX_UDP_PACKET = 8192  # 8KB
-
         log_writer.info("Starting live video stream...")
 
         while True:
@@ -122,14 +118,14 @@ class Emulator:
                     log_writer.error("Failed to capture frame from camera.")
                     break
 
-                if self.socket_type == "UDP":
-                    scale_factor = 0.5  # Reduce size for UDP to be more efficient
-                    frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+                # if self.socket_type == "UDP":
+                #     scale_factor = 0.5  # Reduce size for UDP to be more efficient
+                #     frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
 
                 _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.encode_quality])  # Write to a JPEG and reduce quality
 
                 # Serialize the frame
-                data = pickle.dumps(buffer)
+                data = buffer.tobytes()
 
                 if self.socket_type == "TCP":
                     """
@@ -159,7 +155,7 @@ class Emulator:
                     The first sent packet tells the server the number of chunks the frame was split into, and the total size of the frame.
                     We send these over to the server while it builds all of them up until it receives the specified number of chunks.
                     """
-                    chunk_size = MAX_UDP_PACKET - 20  # Header will be 16 bytes, so we have an error buffer of 2
+                    chunk_size = MAX_UDP_PACKET - 64  # Header will be 16 bytes, so we have an error buffer of 2
                     chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]  # We split the frame up into its chunks with sequence numbers
 
                     header = struct.pack("QQ", len(chunks), len(data))  # This is the header where we declare the number of chunks and the total size of the frame
@@ -204,8 +200,6 @@ class Emulator:
         log_writer = client_logger.get_logger()
         frame_counter = 0
 
-        MAX_UDP_PACKET = 49152  # 8KB
-
         while True:
             try:
                 ret, frame = self.video.read()  # Load the video, ret is a bool that states if the frame was read correctly
@@ -225,14 +219,14 @@ class Emulator:
 
                 encode_quality = self.encode_quality if self.socket_type == "TCP" else max(30, self.encode_quality - 20)
                 _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, encode_quality])
-                data = pickle.dumps(buffer)
+                data = buffer.tobytes()
 
                 if self.socket_type == "TCP":
                     size = struct.pack("Q", len(data))
                     self.client_socket.sendall(size + data)
 
                 elif self.socket_type == "UDP":
-                    chunk_size = MAX_UDP_PACKET - 20
+                    chunk_size = MAX_UDP_PACKET - 16
                     chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
 
                     header = struct.pack("QQ", len(chunks), len(data))
