@@ -1,5 +1,6 @@
 package com.example.cs499_vision_app
 import android.content.Context
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -9,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +32,14 @@ class MainActivity : ComponentActivity() {
 // Main screen settings
 @Composable
 fun MainScreen(){
-    Scaffold { innerPadding ->
+    // automatically select just vibrate
+    var selectedOption by remember {mutableStateOf("Vibrate")}
+
+    val context = LocalContext.current
+
+    Scaffold(
+    content = {
+        innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -40,22 +49,67 @@ fun MainScreen(){
             horizontalAlignment = Alignment.CenterHorizontally
 
         ) {
-            VibrateButton()
+
+            SelectionMenu(selectedOption) {selectedOption = it}
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    when(selectedOption) {
+                        "Vibrate" -> triggerVibration(context)
+                        "Sound" -> playSound(context)
+                        "Both" -> {
+                            triggerVibration(context)
+                            playSound(context)
+                        }
+                    }
+                }
+            ) {
+                Text("Play")
+            }
+
         }
     }
+            )
 }
-//function to call triggerVibration for a button
-@Composable
-fun VibrateButton() {
-    val context = LocalContext.current
 
-    Button(
-        onClick = { triggerVibration(context) },
-        modifier = Modifier.padding(16.dp)
-    ) {
-        Text("Vibrate")
+
+// making a radiobutton option for sound and vibration prefernece
+//https://developer.android.com/develop/ui/compose/components/radio-button
+@Composable
+fun SelectionMenu(selectedOption: String, onOptionSelected: (String) -> Unit) {
+    val radioOptions = listOf("Vibrate", "Sound", "Both")
+
+    Column {
+        radioOptions.forEach {text->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .selectable(
+                        selected = (text == selectedOption),
+                        onClick = {onOptionSelected(text)},
+
+                    )
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+                    )
+            { RadioButton(
+                selected = (text == selectedOption),
+                onClick = null
+
+            )
+            Text(text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(start = 16.dp))
+            }}
+
+        }
     }
-}
+
+
+
 // function to trigger a vibration
 fun triggerVibration(context: Context) {
     val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -86,3 +140,12 @@ fun triggerVibration(context: Context) {
         Toast.makeText(context, " Device did not vibrate", Toast.LENGTH_SHORT).show()
     }
 }
+
+fun playSound(context: Context){
+    val mediaPlayer = MediaPlayer.create(context, R.raw.mixkit_magic_marimba_2820) // sound file https://mixkit.co/free-sound-effects/notification/
+    mediaPlayer.start()
+    Toast.makeText(context, "Playing Sound", Toast.LENGTH_SHORT).show()
+}
+
+
+
