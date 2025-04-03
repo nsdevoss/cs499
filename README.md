@@ -71,3 +71,23 @@ This is for detection of close objects. The `min_dist` and `max_dist` determine 
 `min_area` this is a threshold value that filters out small artifacts, the bigger the area, the more compact the detections have to be.
 So if we were looking for a person we would want to use a large area, but if we wanted to find a coke can maybe a little smaller.
 It is recommended to keep this above 700 to avoid getting just noise.
+
+## Examples
+
+### Distance Argument changing
+Example with low area:
+![alt text](assets/images/low_area.jpg "Low area")
+
+Example with high area:
+![alt text](assets/images/high_area.jpg "High area")
+
+Example with really low range:
+![alt text](assets/images/low_range.jpg "Low range")
+
+Example with really high range:
+![alt text](assets/images/high_range.jpg "High range")
+
+### Point Cloud examples
+![alt text](assets/images/point_cloud1.png "Point Cloud 1")
+![alt text](assets/images/point_cloud2.png "Point Cloud 2")
+![alt text](assets/images/point_cloud3.png "Point Cloud 3")
