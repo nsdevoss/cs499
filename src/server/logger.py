@@ -5,22 +5,24 @@ from datetime import datetime
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
-"""
-Logger Class
 
-This class is pretty simple as all it does is create the logger that python handles.
-
-To use this class you need to make an instance of it and pass in the name of the logger and the file name
-Python handles all of the logging but to get the instance of the logger just use get_logger()
-
-Example of logging:
-logger = Logger(name="LoggerClass", log_file="my_instance.log")
-
-logger.get_logger().info("This is an info text")
-logger.get_logger().warning("This is a warning text")
-logger.get_logger().error("This is an error text")
-"""
 class Logger:
+    """
+    Logger Class
+
+    This class is pretty simple as all it does is create the logger that python handles.
+
+    To use this class you need to make an instance of it and pass in the name of the logger and the file name
+    Python handles all of the logging but to get the instance of the logger just use get_logger()
+
+    Example of logging:
+    logger = Logger(name="LoggerClass", log_file="my_instance.log")
+
+    logger.get_logger().info("This is an info text")
+    logger.get_logger().warning("This is a warning text")
+    logger.get_logger().error("This is an error text")
+    """
+
     log_dir = "logs"
     logs_to_zip = []
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

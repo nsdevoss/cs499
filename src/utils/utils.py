@@ -4,44 +4,50 @@ import gc
 import os
 import zipfile
 import socket
+import platform
 from src.server.logger import server_logger, client_logger
-
-MAX_QUEUE_SIZE = 10
 
 
 def get_ip_address():
-    try:
-        # This is for Mac only, idk what it is on Windows
-        result = subprocess.run(
-            "ifconfig | grep 'inet ' | grep -v 127.0.0.1",
-            shell=True, capture_output=True, text=True
-        )
+    system = platform.system()
+    if system == "Darwin":
+        server_logger.get_logger().info(f"Program will be run on {platform.platform(terse=True)}")
+        try:
+            result = subprocess.run(
+                "ifconfig | grep 'inet ' | grep -v 127.0.0.1",
+                shell=True, capture_output=True, text=True
+            )
 
-        lines = result.stdout.strip().split("\n")
-        if lines:
-            server_logger.get_logger().info(f"LAN WIFI IPv4 Address: {lines[0].split()[1]}")
-            return lines[0].split()[1]
+            lines = result.stdout.strip().split("\n")
+            if lines:
+                server_logger.get_logger().info(f"LAN WIFI IPv4 Address: {lines[0].split()[1]}")
+                return lines[0].split()[1]
 
-    except Exception as e:
-        server_logger.get_logger().error(f"Error retrieving IP: {e}")
-    server_logger.get_logger().error("No IP Address Found")
-    return "Unknown"
+        except Exception as e:
+            server_logger.get_logger().error(f"Error retrieving IP: {e}")
+        server_logger.get_logger().error("No IP Address Found")
+        return "Unknown"
+    elif system == "Windows":
+        server_logger.get_logger().info(f"Program will be run on {platform.platform(terse=True)}")
+        try:
+            host_name = socket.gethostname()
+            windows_ip = socket.gethostbyname(host_name)
+            print("Your Windows Computer name is: ")
+            print("Your Windows Computer IP Address is:" + windows_ip)
+            if windows_ip:
+                print(f"Found IP Address: " + windows_ip)
+                return windows_ip
+        except Exception as e:
+            print(f"Error Retrieving Windows IP: {e}")
+        print("No IP Address Found")
+        return "Unknown"
+    else:
+        print("Platform is unknown")
+        server_logger.get_logger().error("Unsupported platform, returning 'Unknown'")
+        return "Unknown"
 
-def windows_get_ip_address():
-    try:
-        host_name = socket.gethostname()
-        windows_ip = socket.gethostbyname(host_name)
-        print("Your Windows Computer name is: ")
-        print("Your Windows Computer IP Address is:" + windows_ip)
-        if windows_ip:
-            print(f"Found IP Address: " + windows_ip)
-            return windows_ip
-    except Exception as e:
-        print(f"Error Retrieving Windows IP: {e}")
-    print("No IP Address Found")
-    return "Unknown"
 
-# Zips all the current logs, we get the logs from main.py in logs_to_zip
+# Zips all the current logs, we get the logs from main.py in logs_to_zip, still some bugs with it
 def zip_logs(start_time, logs: list):
     if not logs:
         return
@@ -110,23 +116,3 @@ def split_frame(frame):
         right_frame = frame[:, half_width:, :]
 
     return left_frame, right_frame
-
-
-################ Experimental, you can try to make it better ################
-
-def manage_queue(frame_queue):
-    """
-    This function continuously reads frames from the shared queue
-    and removes old frames when the queue reaches MAX_QUEUE_SIZE.
-    """
-    processed_frames = {}
-
-    while True:
-        port, frame = frame_queue.get()
-
-        processed_frames[port] = frame
-
-        if len(processed_frames) > MAX_QUEUE_SIZE:
-            oldest_port = list(processed_frames.keys())[0]
-            del processed_frames[oldest_port]
-            gc.collect()

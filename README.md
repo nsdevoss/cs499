@@ -30,7 +30,8 @@ This is for the emulator.`enabled` dictates if the emulator is enabled.
 "server_arguments": {
     "port": 9000,
     "host": "0.0.0.0",
-    "socket_type": "TCP"
+    "socket_type": "TCP",
+    "fps": 30
   },
 ```
 Currently, this is only for the StreamCameraServer but we can easily change it for both sockets that will open.
@@ -38,7 +39,7 @@ Currently, this is only for the StreamCameraServer but we can easily change it f
 ```json
 "vision_arguments": {
     "enabled": true,
-    "depth_threshold": 0.8,
+    "depth_map_capture": true,
     "StereoSGBM_args": {
       "minDisparity": 0,
       "numDisparities": 32,
@@ -49,23 +50,24 @@ Currently, this is only for the StreamCameraServer but we can easily change it f
       "disp12MaxDiff": 1
     },
     "scale": 0.5,
-    "calibration_file": "calib_50/calibration_50.npz",
-    "camera_parameters": {
-      "baseline": 0.07,
-      "viewing_angle": 120
-    }
+    "calibration_file": "calib_50/calibration_50.npz"
   }
 ```
 This is for the computations done on the frames in the frame queue. `StereoSGB_args` determines the parameters for the StereoSGBM_args for the algorithm.
-`depth_threshold` is the threshold for the depth algorithm on detecting how close things are. `scale` determines the scale of the image size and resolution for the algorithm.
+`depth_map_capture` determines if you are able to capture the depth visualization by pressing "c" on the display frame. `scale` determines the scale of the image size and resolution for the algorithm.
 And `calibration_file` is the NPZ calibration file used for the setup.
 
 ```json
-"camera_parameters": {
-    "baseline": float,
-    "viewing_angle": float
-  }
+"distance_args": {
+      "max_dist": 0.5,
+      "min_dist": 0,
+      "color": [12,237,16],
+      "alpha": 0.75,
+      "min_area": 800
+    }
 ```
-This is for the physical camera values that will be needed for calibration and depth estimation. These are purely its physical values, so you should not change this configuration unless you are using an emulated camera that you need to calibrate.
-`baseline` is the distance between the sensors. `focal_length` si the focal length of the camera, since there are 2 identical ones we only need to store one value.
-`viewing_angle` is the FOV of the cameras, currently it is locked to 120 degrees.
+This is for detection of close objects. The `min_dist` and `max_dist` determine the range where we are looking for. These values are in meters.
+`color` is an rgb for the color of the contour outline displayed. `alpha` determines the opacity of the color overlay.
+`min_area` this is a threshold value that filters out small artifacts, the bigger the area, the more compact the detections have to be.
+So if we were looking for a person we would want to use a large area, but if we wanted to find a coke can maybe a little smaller.
+It is recommended to keep this above 700 to avoid getting just noise.

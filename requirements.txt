@@ -25,8 +25,7 @@ matplotlib==3.10.1
 narwhals==1.33.0
 nbformat==5.10.4
 nest-asyncio==1.6.0
-numpy==2.2.4
-open3d @ file:///Users/nicholasburczyk/Downloads/open3d-0.19.0-cp312-cp312-macosx_10_15_universal2.whl#sha256=9e4a8d29443ba4c83010d199d56c96bf553dd970d3351692ab271759cbe2d7ac
+numpy~=2.2.2
 open3d-python==0.3.0.0
 opencv-contrib-python==4.11.0.86
 opencv-python==4.11.0.86
@@ -56,3 +55,4 @@ tzdata==2025.2
 urllib3==2.3.0
 Werkzeug==3.0.6
 zipp==3.21.0
+open3d~=0.19.0

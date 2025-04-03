@@ -12,14 +12,11 @@ CALIBRATION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..
 checkerboard_size = (8, 11)
 square_size = 20.0
 
-def calibrate(calibration_dir=None, output_dir=None,max_reprojection_error=1.0,
-              chessboard_size=checkerboard_size, scale_factor=1.0):
-    if calibration_dir is None:
-        root = os.getcwd()
-        calibration_dir = os.path.join(root, 'calibration', 'stereo')
 
-    if output_dir is None:
-        output_dir = os.path.dirname(os.path.abspath(__file__))
+def calibrate(max_reprojection_error=1.0, chessboard_size=checkerboard_size, scale_factor=1.0):
+    root = os.getcwd()
+    calibration_dir = os.path.join(root, 'calibration', 'stereo')
+    output_dir = os.path.dirname(os.path.abspath(__file__))
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -68,7 +65,7 @@ def calibrate(calibration_dir=None, output_dir=None,max_reprojection_error=1.0,
                 left_imgGray, cornersOrg, (11, 11), (-1, -1), criteria
             )
 
-            worldPtsList.append(criteria)
+            worldPtsList.append(world_points)
             imgPtsList.append(cornersRefined)
             successful_images.append(curImgPath)
         else:
@@ -164,15 +161,6 @@ def calibrate(calibration_dir=None, output_dir=None,max_reprojection_error=1.0,
 
     return camMatrix, distCoeff
 
-def run_calibration():
-    camMatrix, distCoeff = calibrate(
-        showPics=True,
-        max_reprojection_error=0.2,
-        chessboard_size=(8, 6),
-        scale_factor=0.8,
-    )
-    return camMatrix, distCoeff
-
 
 def test_undistortion():
     calibration_path = os.path.join(CALIBRATION_DIR, "calib_50", "calibration_50.npz")
@@ -180,10 +168,10 @@ def test_undistortion():
         print(f"Calibration file not found at {calibration_path}")
         return
 
-    cal_data = np.load(calibration_path)
-    camMatrix = cal_data['camMatrix']
-    distCoeff = cal_data['distCoeff']
-    newCamMatrix = cal_data['newCamMatrix']
+    data = np.load(calibration_path)
+    camMatrix = data['camMatrix']
+    distCoeff = data['distCoeff']
+    newCamMatrix = data['newCamMatrix']
     test_img_path = os.path.join(ROOT_DIR, 'calibration', 'stereo', 'img_12.jpg')
 
     img = cv2.imread(test_img_path)
@@ -217,7 +205,6 @@ def get_calib_images(num_images=25):
         return False
 
     count = 0
-    last_capture_time = time.time() - 2
 
     while count < num_images:
         ret, frame = cap.read()
@@ -238,26 +225,20 @@ def get_calib_images(num_images=25):
 
         vis_frame = frame.copy()
 
-        status = "READY TO CAPTURE" if ret_left and ret_right else "CHECKERBOARD NOT DETECTED"
-        color = (0, 255, 0) if ret_left and ret_right else (0, 0, 255)
-
-        cv2.putText(vis_frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-        cv2.putText(vis_frame, f"Captured: {count}/{num_images}", (10, 60),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+        print(f"Captured: {count}/{num_images}")
 
         cv2.imshow('Stereo Camera - Calibration Capture', vis_frame)
 
         key = cv2.waitKey(1) & 0xFF
 
         current_time = time.time()
-        if (key == ord('c')) and (current_time - last_capture_time >= 2):
+        if key == ord('c'):
             if ret_left and ret_right:
                 filename = f'calibration/stereo/img_{count:02d}.jpg'
                 cv2.imwrite(filename, frame)
 
                 print(f"Captured image {count + 1}/{num_images} - {filename}")
                 count += 1
-                last_capture_time = current_time
             else:
                 print("Cannot capture: Checkerboard not detected in both views")
         elif key == ord('q'):
@@ -267,7 +248,15 @@ def get_calib_images(num_images=25):
     cv2.destroyAllWindows()
 
     print(f"Captured {count} images for calibration")
-    return True
+
+
+def run_calibration():
+    camMatrix, distCoeff = calibrate(
+        max_reprojection_error=0.2,
+        chessboard_size=(8, 6),
+        scale_factor=0.8,
+    )
+    return camMatrix, distCoeff
 
 
 if __name__ == "__main__":

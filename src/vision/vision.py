@@ -2,12 +2,12 @@ import cv2
 import queue
 import numpy as np
 import os
-import time
 import open3d as o3d
 from src.server.logger import server_logger
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 CALIBRATION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../calibrations"))
+CAMERA_BASELINE = 0.07  # DONT CHANGE!!!!!!
 
 
 class Vision:
@@ -80,8 +80,6 @@ class Vision:
             else:
                 raise ValueError(f"cam_matrix is set to: {self.cam_matrix}, dist_coeffs is set to: {self.dist_coeffs}")
 
-            prev_time = time.time()  # Store the initial timestamp
-            frame_count = 0
             while True:
                 try:
                     frame = self.frame_queue.get()
@@ -121,7 +119,7 @@ class Vision:
                                 (filtered_disp[valid_mask] - min_val) / (max_val - min_val) * 255).astype(
                             np.uint8)
 
-                        distance_map = self.disparity_to_distance(filtered_disp)
+                        distance_map, points_3d, valid_dist_mask = self.disparity_to_distance(filtered_disp)
                         highlighted_frame = self.highlight_distance_range(left, distance_map)
 
                         disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_INFERNO)
@@ -136,20 +134,10 @@ class Vision:
                         display_frame[:disp_colored.shape[0],
                         highlighted_frame.shape[1]:highlighted_frame.shape[1] + disp_colored.shape[1]] = disp_colored
 
-                        frame_count += 1
-                        elapsed_time = time.time() - prev_time
-                        if elapsed_time > 1:
-                            fps = frame_count / elapsed_time
-                            prev_time = time.time()
-                            frame_count = 0
-
-                            fps_text = f"FPS: {fps:.2f}"
-                            cv2.putText(disp_colored, fps_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         if self.display_queue is not None:
-                            self.display_queue.put((frame, display_frame))
+                            self.display_queue.put((display_frame, left, points_3d, valid_dist_mask))
 
                         del frame, disp_colored, display_frame
-
 
                 except queue.Empty:
                     server_logger.get_logger().warning("Frame queue is empty.")
@@ -161,6 +149,10 @@ class Vision:
             return
 
     def load_calibration(self, scale=1.0):
+        """
+        This function loads the calibration file we generated and its parameters we set.
+        :param scale: We have to take into account the scale of the images for the matrix
+        """
         if not os.path.exists(self.calibration_file):
             server_logger.get_logger().error(f"No valid calibration file found: {self.calibration_file}")
         try:
@@ -188,7 +180,7 @@ class Vision:
         h = int(h * scale)
 
         R = np.eye(3)
-        T = np.array([self.vision_args.get("camera_parameters").get("baseline"), 0, 0])
+        T = np.array([CAMERA_BASELINE, 0, 0])
 
         R1, R2, P1, P2, Q, _, _ = cv2.stereoRectify(
             self.cam_matrix, self.dist_coeffs,
@@ -228,7 +220,6 @@ class Vision:
 
         return cv2.addWeighted(highlight, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)  # We overlay it onto the visual frame
 
-
     def disparity_to_distance(self, disparity):
         """
         This is a pretty simple function we just do a simple calculation to get the distance for each value in the disparity array
@@ -237,22 +228,33 @@ class Vision:
         """
         valid_mask = (disparity > 0.1)  # We check for valid areas
 
-        points_3d = cv2.reprojectImageTo3D(disparity, self.Q)  # Pretty self explanatory
+        points_3d = cv2.reprojectImageTo3D(disparity, self.Q)  # Pretty self-explanatory
         distance_map = points_3d[:, :, 2]  # We get the Z value from the 3D matrix
         distance_map[~valid_mask] = np.nan  # And we fill in the matrix with valid values
 
-        return distance_map
+        return distance_map, points_3d, valid_mask
 
 
-def create_3d_map(points_3d, valid_mask):
-    point_cloud = o3d.geometry.PointCloud()
-
+def create_3d_map(points_3d, valid_mask, frame):
+    # Filtering initially for valid points (not nan, infinity, etc)
     valid_points = points_3d[valid_mask].reshape(-1, 3)
+    valid_colors = frame[valid_mask][:, [2, 1, 0]].reshape(-1, 3) / 255.0
 
+    valid_points[:, 2] = -valid_points[:, 2]  # Inverse Z
+    valid_points[:, 1] = -valid_points[:, 1]  # Flip over X axis
+
+    # Making the actual Open3D object and just populating what we need
+    point_cloud = o3d.geometry.PointCloud()
     point_cloud.points = o3d.utility.Vector3dVector(valid_points.astype(np.float64))
-    o3d.visualization.draw_geometries([point_cloud])
+    point_cloud.colors = o3d.utility.Vector3dVector(valid_colors.astype(np.float64))
+
+    # Filtering points
+    _, good_indicies = point_cloud.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+    filtered_cloud = point_cloud.select_by_index(good_indicies)
+    o3d.visualization.draw_geometries([filtered_cloud])
 
 
 if __name__ == "__main__":
+    # dont listen to this
     array = np.ones((1000, 1000, 3), dtype=np.uint8)
     create_3d_map(array)

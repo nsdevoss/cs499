@@ -2,19 +2,18 @@ import socket
 from src.server.logger import server_logger
 
 
-"""
-SocketServer Class
-
-This is the base class that just gives some basic socket connection stuff
-
-Params:
-:param host: This is who we are looking for, 0.0.0.0 just means that we are looking for any IP address on the network. You could change this to the client's IP address to directly look for them. (Plz don't do, default is fine)
-:param port: The port we are opening up on this instance.
-:param socket_type: This determines if the server will be TCP or UDP. You can look up the difference but the StreamCameraServer uses TCP
-"""
-
-
 class SocketServer:
+    """
+    SocketServer Class
+
+    This is the base class that just does some basic socket connection stuff for the inherited classes
+
+    Params:
+    :param host: This is who we are looking for, 0.0.0.0 just means that we are looking for any IP address on the network. You could change this to the client's IP address to directly look for them. (Plz don't do, default is fine)
+    :param port: The port we are opening up on this instance.
+    :param socket_type: This determines if the server will be TCP or UDP. You can look up the difference but the StreamCameraServer uses TCP
+    """
+
     def __init__(self, host="0.0.0.0", port=9000, socket_type="TCP"):
         self.host = host
         self.port = port
@@ -33,7 +32,7 @@ class SocketServer:
             self.server_socket.listen(1)
         server_logger.get_logger().info(f"Listening on {self.host}:{self.port}")
 
-    def shutdown(self):
+    def shutdown(self):  # We don't even use this method rn since we just KILL every process like a caveman. But we should use this
         if not self.is_shutdown:
             server_logger.get_logger().info(f"Shutting down server: {self.host}:{self.port}")
             self.server_socket.close()

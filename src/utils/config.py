@@ -10,27 +10,20 @@ class Config:
         "emulator_arguments": {
             "enabled": True,
             "stream_enabled": False,
-            "video_name": "shovel",
-            "encode_quality": 10
+            "video_name": "flag1",
+            "encode_quality": 70
         },
-        "server_arguments": {
+        "camera_server_arguments": {
             "port": 9000,
             "host": "0.0.0.0",
-            "socket_type": "TCP"
-        },
-        "video_arguments": {
-            "display": True,
-            "fps": 30,
-            "resolution": [
-                2560,
-                720
-            ]
+            "socket_type": "TCP",
+            "fps": 30
         },
         "vision_arguments": {
             "enabled": True,
+            "depth_map_capture": True,
             "calibration_file": "calib_50/calibration_50.npz",
             "scale": 0.2,
-            "depth_threshold": 0.8,
             "StereoSGBM_args": {
                 "minDisparity": 0,
                 "numDisparities": 32,
@@ -40,15 +33,11 @@ class Config:
                 "speckleRange": 2,
                 "disp12MaxDiff": 1
             },
-            "camera_parameters": {
-                "baseline": 0.07,
-                "viewing_angle": 120
-            },
             "distance_args": {
                 "max_dist": 0.5,
                 "min_dist": 0,
-                "color": [0, 255, 255],
-                "alpha": 0.5,
+                "color": [12, 237, 16],
+                "alpha": 0.75,
                 "min_area": 800
             }
         }

@@ -10,6 +10,7 @@ from src.server.logger import client_logger
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 MAX_UDP_PACKET = 8216
 
+
 class Emulator:
     """
     Emulator Class
@@ -21,8 +22,8 @@ class Emulator:
     :param video: The video that will be played on the instance of the emulator.
     :param stream_enabled: This defines if the emulator will use the external camera rather than load a video to send
     :param server_port: The port that the emulator will attempt to connect to on the server
+    :param encode_quality: Determines the quality the video will be sent as a percent (1-100)
     :param resolution: The video resolution that will be resized to (Might be hardcoded into the raspberry Pi if i can't figure out how to remote exec)
-    :param fps: This fr doesn't really do anything
     """
 
     def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, socket_type="TCP", encode_quality=70, resolution=(2560,720)):
@@ -52,9 +53,6 @@ class Emulator:
             else:
                 client_logger.get_logger().warning(f"Video path doesn't exist, using default video")
                 self.video = cv2.VideoCapture(os.path.join(ROOT_DIR, "assets/videos", "car.mp4"))
-        # self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
-        # self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
-        # self.video.set(cv2.CAP_PROP_FPS, fps)
         self.video.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.connect_to_server()
         client_logger.get_logger().info("Emulator initialized successfully.")
