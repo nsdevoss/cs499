@@ -3,6 +3,7 @@ import queue
 import numpy as np
 import os
 import time
+import open3d as o3d
 from src.server.logger import server_logger
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
@@ -143,7 +144,7 @@ class Vision:
                             frame_count = 0
 
                             fps_text = f"FPS: {fps:.2f}"
-                            cv2.putText(display_frame, fps_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                            cv2.putText(disp_colored, fps_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         if self.display_queue is not None:
                             self.display_queue.put((frame, display_frame))
 
@@ -241,3 +242,17 @@ class Vision:
         distance_map[~valid_mask] = np.nan  # And we fill in the matrix with valid values
 
         return distance_map
+
+
+def create_3d_map(points_3d, valid_mask):
+    point_cloud = o3d.geometry.PointCloud()
+
+    valid_points = points_3d[valid_mask].reshape(-1, 3)
+
+    point_cloud.points = o3d.utility.Vector3dVector(valid_points.astype(np.float64))
+    o3d.visualization.draw_geometries([point_cloud])
+
+
+if __name__ == "__main__":
+    array = np.ones((1000, 1000, 3), dtype=np.uint8)
+    create_3d_map(array)
