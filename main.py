@@ -10,6 +10,8 @@ from src.WebServer.webserver import MyServer
 from http.server import HTTPServer
 from src.server.logger import server_logger
 import cv2
+import time
+
 
 processes = []
 
@@ -18,6 +20,8 @@ def play(display_queue, depth_map_enabled):
     points_3d = None
     valid_mask = None
     frame = None
+    frame_count = 0
+    start_time = time.time()
     while True:
         if display_queue is not None and not display_queue.empty():
             disp, frame, points_3d, valid_mask = display_queue.get()
@@ -25,6 +29,15 @@ def play(display_queue, depth_map_enabled):
                 cv2.imshow("Display", disp)
             else:
                 print("Display frame not found")
+
+            frame_count += 1
+
+            now = time.time()
+            if now - start_time >= 60.0:
+                fps = frame_count / (now - start_time)
+                server_logger.get_logger().info(f"DISPLAY FPS: {fps:.2f}")
+                frame_count = 0
+                start_time = now
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
@@ -56,16 +69,17 @@ def start_emulator(ip_addr, emulator_args, camera_server_arguments):
     encode_quality = emulator_args.get("encode_quality")
     port = camera_server_arguments.get("port")
     socket_type = camera_server_arguments.get("socket_type")
+    scale = camera_server_arguments.get("scale")
 
-    client = emulator.Emulator(ip_addr, video, stream_enabled, port, socket_type, encode_quality)
+    client = emulator.Emulator(server_ip=ip_addr, video=video, stream_enabled=stream_enabled, server_port=port, socket_type=socket_type, encode_quality=encode_quality, scale=scale)
     if stream_enabled:
         client.send_video_stream()
     else:
         client.send_video()
 
 
-def start_vision_process(vision_queue, display_queue, vision_args):
-    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, vision_args=vision_args)
+def start_vision_process(vision_queue, display_queue, vision_args, scale):
+    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, vision_args=vision_args, scale=scale)
     vision.start()
 
 
@@ -100,7 +114,7 @@ def main(camera_server_arguments, emulator_args, vision_args):
 
     ###### Vision start process ######
     vision_process = multiprocessing.Process(target=start_vision_process,
-                                             args=(vision_queue, display_queue, vision_args))
+                                             args=(vision_queue, display_queue, vision_args, camera_server_arguments.get("scale")))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)

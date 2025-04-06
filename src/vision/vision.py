@@ -1,3 +1,4 @@
+import time
 import cv2
 import queue
 import numpy as np
@@ -20,10 +21,12 @@ class Vision:
     :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, display_queue, vision_args):
+    def __init__(self, frame_queue, display_queue, vision_args, scale):
         self.frame_queue = frame_queue
         self.display_queue = display_queue
         self.vision_args = vision_args
+        self.scale = scale
+        print(scale)
         self.calibration_file = os.path.join(CALIBRATION_DIR, self.vision_args.get("calibration_file"))
         # Depth args
         self.display_frame = None
@@ -50,7 +53,6 @@ class Vision:
 
     def depth_estimation(self):
         try:
-            scale = self.vision_args.get("scale", 1.0)
             stereo = cv2.StereoSGBM_create(
                 minDisparity=self.vision_args.get("StereoSGBM_args").get("minDisparity"),
                 numDisparities=self.vision_args.get("StereoSGBM_args").get("numDisparities"),
@@ -63,19 +65,17 @@ class Vision:
                 P2=32 * 3 * self.vision_args.get("StereoSGBM_args").get("blockSize") ** 2,
                 mode=cv2.STEREO_SGBM_MODE_HH
             )
-            self.load_calibration(scale)
+            self.load_calibration(self.scale)
 
             right_matcher = cv2.ximgproc.createRightMatcher(stereo)
             wls_filter = cv2.ximgproc.createDisparityWLSFilter(stereo)
             wls_filter.setLambda(8000)
             wls_filter.setSigmaColor(1.5)
 
-            frame = self.frame_queue.get()
-            print(frame.shape)
-            h, w = frame.shape[:2]
+            h, w = (720, 2560)
             mid = w // 2
             if self.cam_matrix is not None and self.dist_coeffs is not None:
-                self.map1_x, self.map1_y, self.map2_x, self.map2_y, self.Q = self.generate_rectify_maps((mid, h), scale)
+                self.map1_x, self.map1_y, self.map2_x, self.map2_y, self.Q = self.generate_rectify_maps((mid, h), self.scale)
                 server_logger.get_logger().info("Rectification maps generated")
             else:
                 raise ValueError(f"cam_matrix is set to: {self.cam_matrix}, dist_coeffs is set to: {self.dist_coeffs}")
@@ -88,9 +88,6 @@ class Vision:
                         h, w = frame.shape[:2]
                         mid = w // 2
                         left_frame, right_frame = frame[:, :mid], frame[:, mid:]
-
-                        left_frame = cv2.resize(left_frame, (int(mid * scale), int(h * scale)))
-                        right_frame = cv2.resize(right_frame, (int(mid * scale), int(h * scale)))
 
                         left = cv2.remap(left_frame, self.map1_x, self.map1_y, cv2.INTER_LINEAR)
                         right = cv2.remap(right_frame, self.map2_x, self.map2_y, cv2.INTER_LINEAR)
@@ -120,19 +117,31 @@ class Vision:
                             np.uint8)
 
                         distance_map, points_3d, valid_dist_mask = self.disparity_to_distance(filtered_disp)
-                        highlighted_frame = self.highlight_distance_range(left, distance_map)
+                        highlighted_frame, contour_centers = self.highlight_distance_range(left, distance_map)
 
                         disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_INFERNO)
 
                         if display_frame is None or display_frame.shape[1] != highlighted_frame.shape[1] + \
                                 disp_colored.shape[1]:
-                            display_frame = np.zeros((max(highlighted_frame.shape[0], disp_colored.shape[0]),
-                                                      highlighted_frame.shape[1] + disp_colored.shape[1], 3),
-                                                     dtype=np.uint8)
+                            display_frame = np.zeros(
+                                (max(highlighted_frame.shape[0], disp_colored.shape[0]) + left.shape[0],
+                                 highlighted_frame.shape[1] + disp_colored.shape[1], 3),
+                                dtype=np.uint8
+                            )
 
                         display_frame[:highlighted_frame.shape[0], :highlighted_frame.shape[1]] = highlighted_frame
+
+                        # Disparity frame (top-right)
                         display_frame[:disp_colored.shape[0],
                         highlighted_frame.shape[1]:highlighted_frame.shape[1] + disp_colored.shape[1]] = disp_colored
+
+                        # Original left frame (bottom-left)
+                        display_frame[highlighted_frame.shape[0]:highlighted_frame.shape[0] + left.shape[0],
+                        :left.shape[1]] = left
+
+                        # Contour center frame (bottom-right)
+                        display_frame[highlighted_frame.shape[0]:highlighted_frame.shape[0] + contour_centers.shape[0],
+                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + contour_centers.shape[1]] = contour_centers
 
                         if self.display_queue is not None:
                             self.display_queue.put((display_frame, left, points_3d, valid_dist_mask))
@@ -143,7 +152,6 @@ class Vision:
                     server_logger.get_logger().warning("Frame queue is empty.")
                     break
 
-            cv2.destroyAllWindows()
         except Exception as e:
             server_logger.get_logger().error(f"Error during depth estimation: {e}")
             return
@@ -210,15 +218,30 @@ class Vision:
         # We find contours to filter out what we highlight, contours basically act as a filter as it makes areas of congested regions
         contours, _ = cv2.findContours(range_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         highlight_mask = np.zeros_like(range_mask)  # This mask is the same dimensions as the range 0,1 mask
+        highlight = np.zeros_like(frame)  # This is what we will display, we create a new matrix the same size as the orig frame
+        contour_centers = np.zeros_like(frame)
         for contour in contours:
             if cv2.contourArea(contour) >= self.highlight_min_area:  # If the contour is big enough to be considered valid
-                cv2.drawContours(highlight_mask, [contour], -1, self.highlight_color, 2)
+                epsilon = 0.02 * cv2.arcLength(contour, True)
+                approx_contour = cv2.approxPolyDP(contour, epsilon, True)
+
+                cv2.drawContours(highlight_mask, [approx_contour], -1, self.highlight_color, 2)
                 cv2.fillPoly(highlight_mask, [contour], self.highlight_color)
+                moments = cv2.moments(contour)
+                if moments['m00'] != 0:
+                    Cx = int(moments['m10']/moments['m00'])
+                    Cy = int(moments['m01']/moments['m00'])
+                    contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=5, color=(0,255,0), thickness=-1)
+        highlight[highlight_mask > 0] = self.highlight_color
 
-        highlight = np.zeros_like(frame)  # This is what we will display, we create a new matrix the same size as the orig frame
-        highlight[highlight_mask > 0] = self.highlight_color  # We populate valid values with our color we choose
+        highlight = cv2.GaussianBlur(highlight, (5, 5), 0)  # Smoothing
 
-        return cv2.addWeighted(highlight, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)  # We overlay it onto the visual frame
+        # We blend the overlays with the frame
+        blended_frame = cv2.addWeighted(highlight, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)
+        blended_contour_centers = cv2.addWeighted(contour_centers, self.highlight_alpha, frame,
+                                                  1 - self.highlight_alpha, 0)
+
+        return blended_frame, blended_contour_centers
 
     def disparity_to_distance(self, disparity):
         """
@@ -249,7 +272,7 @@ def create_3d_map(points_3d, valid_mask, frame):
     point_cloud.colors = o3d.utility.Vector3dVector(valid_colors.astype(np.float64))
 
     # Filtering points
-    _, good_indicies = point_cloud.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+    _, good_indicies = point_cloud.remove_statistical_outlier(nb_neighbors=80, std_ratio=2.0)
     filtered_cloud = point_cloud.select_by_index(good_indicies)
     o3d.visualization.draw_geometries([filtered_cloud])
 

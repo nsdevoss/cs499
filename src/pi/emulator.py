@@ -1,10 +1,12 @@
 import socket
-import time
 import cv2
 import os
 from src.utils import utils
 import struct
 import ipaddress
+import time
+import concurrent.futures
+from turbojpeg import TurboJPEG, TJFLAG_FASTDCT
 from src.server.logger import client_logger
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
@@ -26,12 +28,13 @@ class Emulator:
     :param resolution: The video resolution that will be resized to (Might be hardcoded into the raspberry Pi if i can't figure out how to remote exec)
     """
 
-    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, socket_type="TCP", encode_quality=70, resolution=(2560,720)):
+    def __init__(self, server_ip, video, stream_enabled: bool, server_port: int, socket_type="TCP", encode_quality=70, scale=1.0):
         self.server_ip = server_ip
         self.server_port = server_port
         self.shutdown = False
         self.socket_type = socket_type
-        self.resolution = resolution
+        self.scale = scale
+        self.jpeg = TurboJPEG()
         self.encode_quality = encode_quality
         try:
             assert self.socket_type == "TCP" or self.socket_type == "UDP", f'Socket type must be "TCP" or "UDP", got: {self.socket_type}'
@@ -106,24 +109,37 @@ class Emulator:
 
     def send_video_stream(self):
         log_writer = client_logger.get_logger()
+        log_writer.info("Starting live camera feed...")
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+        for _ in range(30):
+            self.video.read()
 
-        log_writer.info("Starting live video stream...")
+        ret, frame = self.video.read()
+        if not ret:
+            log_writer.error("Could not read initial frame.")
+            return
+        log_writer.info(f"Read initial frame with dimensions: {frame.shape}")
+        frame = cv2.resize(frame, (int(frame.shape[1] * self.scale), int(frame.shape[0] * self.scale)))
+        log_writer.info(f"Resizing frame dimensions to: {frame.shape}")
 
+        future_encode = executor.submit(self.jpeg.encode, frame, quality=self.encode_quality, flags=TJFLAG_FASTDCT)
+
+        frame_count = 0
+        fps_count = time.time()
         while True:
             try:
-                ret, frame = self.video.read()
+                ret, next_frame = self.video.read()
                 if not ret:
-                    log_writer.error("Failed to capture frame from camera.")
+                    log_writer.error("Could not read frame.")
                     break
 
-                # if self.socket_type == "UDP":
-                #     scale_factor = 0.5  # Reduce size for UDP to be more efficient
-                #     frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
-
-                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.encode_quality])  # Write to a JPEG and reduce quality
+                next_frame = cv2.resize(next_frame, (int(next_frame.shape[1] * self.scale), int(next_frame.shape[0] * self.scale)))
 
                 # Serialize the frame
-                data = buffer.tobytes()
+                buffer = future_encode.result()
+                data = buffer
+
+                future_encode = executor.submit(self.jpeg.encode, next_frame, quality=self.encode_quality,flags=TJFLAG_FASTDCT)
 
                 if self.socket_type == "TCP":
                     """
@@ -135,6 +151,14 @@ class Emulator:
                     """
                     size = struct.pack("Q", len(data))
                     self.client_socket.sendall(size + data)
+                    frame_count += 1
+
+                    now = time.time()
+                    if now - fps_count >= 60.0:
+                        fps = frame_count / (now - fps_count)
+                        log_writer.info(f"CLIENT FPS: {fps:.2f}")
+                        frame_count = 0
+                        fps_count = now
 
                 elif self.socket_type == "UDP":
                     """
@@ -171,6 +195,14 @@ class Emulator:
                                 break
                             else:
                                 raise e
+                    frame_count += 1
+
+                    now = time.time()
+                    if now - fps_count >= 60.0:
+                        fps = frame_count / (now - fps_count)
+                        log_writer.info(f"CLIENT FPS: {fps:.2f}")
+                        frame_count = 0
+                        fps_count = now
 
                 if self.shutdown:
                     break
@@ -188,6 +220,7 @@ class Emulator:
 
         self.video.release()
         self.client_socket.close()
+        executor.shutdown()
         log_writer.info("Video stream closed.")
 
     def send_video(self):
@@ -196,32 +229,51 @@ class Emulator:
         See send_video_stream() to see how we do it, but this is basically a copy of that
         """
         log_writer = client_logger.get_logger()
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         frame_counter = 0
+
+        ret, frame = self.video.read()
+        if not ret:
+            log_writer.error("Could not read initial frame.")
+            return
+        frame = cv2.resize(frame, (int(frame.shape[1] * self.scale), int(frame.shape[0] * self.scale)))
+
+        future_encode = executor.submit(self.jpeg.encode, frame, quality=self.encode_quality, flags=TJFLAG_FASTDCT)
+
+        frame_count = 0
+        fps_count = time.time()
 
         while True:
             try:
-                ret, frame = self.video.read()  # Load the video, ret is a bool that states if the frame was read correctly
-                if not ret:
-                    log_writer.error("Could not read frame.")
-                    break
-
-                # This is only here for the emulator to loop the video when it finishes
-                frame_counter += 1
                 if frame_counter == self.video.get(cv2.CAP_PROP_FRAME_COUNT):
                     frame_counter = 0
                     self.video.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-                # if self.socket_type == "UDP":
-                #     scale_factor = 0.5
-                #     frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+                ret, next_frame = self.video.read()
+                if not ret:
+                    self.video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    continue
 
-                encode_quality = self.encode_quality if self.socket_type == "TCP" else max(30, self.encode_quality - 20)
-                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, encode_quality])
-                data = buffer.tobytes()
+                next_frame = cv2.resize(next_frame, (int(next_frame.shape[1]*self.scale), int(next_frame.shape[0]*self.scale)))
+                frame_counter += 1
+
+
+                buffer = future_encode.result()
+                data = buffer
+
+                future_encode = executor.submit(self.jpeg.encode, next_frame, quality=self.encode_quality, flags=TJFLAG_FASTDCT)
 
                 if self.socket_type == "TCP":
                     size = struct.pack("Q", len(data))
                     self.client_socket.sendall(size + data)
+                    frame_count += 1
+
+                    now = time.time()
+                    if now - fps_count >= 60.0:
+                        fps = frame_count / (now - fps_count)
+                        log_writer.info(f"CLIENT FPS: {fps:.2f}")
+                        frame_count = 0
+                        fps_count = now
 
                 elif self.socket_type == "UDP":
                     chunk_size = MAX_UDP_PACKET - 16
@@ -242,6 +294,14 @@ class Emulator:
                                 break
                             else:
                                 raise e
+                    frame_count += 1
+
+                    now = time.time()
+                    if now - fps_count >= 60.0:
+                        fps = frame_count / (now - fps_count)
+                        log_writer.info(f"CLIENT FPS: {fps:.2f}")
+                        frame_count = 0
+                        fps_count = now
 
                 if self.shutdown:
                     break
@@ -262,6 +322,7 @@ class Emulator:
 
         self.video.release()
         self.client_socket.close()
+        executor.shutdown()
         log_writer.info("Client Connection closed.")
 
     def shutdown(self):

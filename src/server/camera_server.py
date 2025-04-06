@@ -3,6 +3,8 @@ import socket
 import cv2
 import numpy as np
 import struct
+import time
+from turbojpeg import TurboJPEG
 from src.server.logger import server_logger
 from src.server.server import SocketServer
 
@@ -28,6 +30,7 @@ class StreamCameraServer(SocketServer):
         self.fps = fps
         self.frame_interval = 1.0 / fps
         self.shutdown = False
+        self.jpeg = TurboJPEG()
         super().__init__(host, port, socket_type)
 
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576)
@@ -53,12 +56,12 @@ class StreamCameraServer(SocketServer):
         data = b""
         payload_size = struct.calcsize("Q")
         frame_count = 0
-
+        start_time = time.time()
         try:
             while True:
                 # We get the raw data from the client here
                 while len(data) < payload_size:
-                    packet = conn.recv(8192)
+                    packet = conn.recv(16384)
                     if not packet:
                         log_writer.error(f"No packet received")
                         raise ConnectionResetError("No packet received")
@@ -71,7 +74,7 @@ class StreamCameraServer(SocketServer):
 
                 # Get the full message
                 while len(data) < msg_size:
-                    packet = conn.recv(4096)
+                    packet = conn.recv(16384)
                     if not packet:
                         raise ConnectionResetError("Client disconnected")
                     data += packet
@@ -80,7 +83,11 @@ class StreamCameraServer(SocketServer):
                 data = data[msg_size:]
 
                 # Process the frame
-                frame = cv2.imdecode(np.frombuffer(frame_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                try:
+                    frame = self.jpeg.decode(frame_data)
+                except Exception as e:
+                    log_writer.warning(f"JPEG decoding failed: {e}")
+                    continue
 
 
                 if frame is None:
@@ -94,7 +101,12 @@ class StreamCameraServer(SocketServer):
 
                 if self.vision_queue is not None:
                     self.vision_queue.put(frame)
-
+                now = time.time()
+                if now - start_time >= 30.0:
+                    fps = frame_count / (now - start_time)
+                    log_writer.info(f"SERVER FPS: {fps:.2f}")
+                    frame_count = 0
+                    start_time = now
                 del frame, frame_data
                 gc.collect()
 
