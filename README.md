@@ -9,6 +9,7 @@ To run the program all you need to do is type the following in the terminal:
 > 
 Make sure that you have installed all the dependencies in `requirements.txt`.
 
+***Make sure you follow the directions to install PyTurboJPEG here: https://github.com/lilohuang/PyTurboJPEG***
 ## Configuring the Program
 
 The configuration system is constantly being worked on but here is what is has currently. Here is `config.json` where 
@@ -27,11 +28,12 @@ This is for the emulator.`enabled` dictates if the emulator is enabled.
 `video_name` is the name of the video used under `assets/videos`. `encode_quality` determines what quality the frame will be sent from the client, 0-100 where 100 being the best quality.
 
 ```json
-"server_arguments": {
+"camera_server_arguments": {
     "port": 9000,
     "host": "0.0.0.0",
     "socket_type": "TCP",
-    "fps": 30
+    "fps": 60,
+    "scale": 0.2
   },
 ```
 Currently, this is only for the StreamCameraServer but we can easily change it for both sockets that will open.
@@ -40,6 +42,7 @@ Currently, this is only for the StreamCameraServer but we can easily change it f
 "vision_arguments": {
     "enabled": true,
     "depth_map_capture": true,
+    "calibration_file": "calib_50/calibration_50.npz",
     "StereoSGBM_args": {
       "minDisparity": 0,
       "numDisparities": 32,
@@ -49,9 +52,6 @@ Currently, this is only for the StreamCameraServer but we can easily change it f
       "speckleRange": 2,
       "disp12MaxDiff": 1
     },
-    "scale": 0.5,
-    "calibration_file": "calib_50/calibration_50.npz"
-  }
 ```
 This is for the computations done on the frames in the frame queue. `StereoSGB_args` determines the parameters for the StereoSGBM_args for the algorithm.
 `depth_map_capture` determines if you are able to capture the depth visualization by pressing "c" on the display frame. `scale` determines the scale of the image size and resolution for the algorithm.
