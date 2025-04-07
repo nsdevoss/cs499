@@ -86,3 +86,10 @@ class Config:
         except (KeyError, TypeError):
             server_logger.get_logger().warning(f"Config key '{key}' not found. Using default: {default}")
             return default
+
+
+# This is where we load the config. I moved it here so it is easier for other classes to use it
+Config.load_config()
+emulator_args = Config.get("emulator_arguments")
+vision_args = Config.get("vision_arguments")
+camera_server_arguments = Config.get("camera_server_arguments")

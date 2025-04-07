@@ -1,6 +1,5 @@
 import subprocess
 import tkinter as tk
-import gc
 import os
 import zipfile
 import socket

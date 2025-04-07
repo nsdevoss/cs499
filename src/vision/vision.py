@@ -5,10 +5,9 @@ import numpy as np
 import os
 import open3d as o3d
 from src.server.logger import server_logger
-
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-CALIBRATION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../calibrations"))
-CAMERA_BASELINE = 0.07  # DONT CHANGE!!!!!!
+from src.utils.config import vision_args, camera_server_arguments
+from src.vision.detection import detector
+import src.LocalCommon as lc
 
 
 class Vision:
@@ -21,13 +20,12 @@ class Vision:
     :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, display_queue, vision_args, scale):
+    def __init__(self, frame_queue, display_queue):
         self.frame_queue = frame_queue
         self.display_queue = display_queue
         self.vision_args = vision_args
-        self.scale = scale
-        print(scale)
-        self.calibration_file = os.path.join(CALIBRATION_DIR, self.vision_args.get("calibration_file"))
+        self.scale = camera_server_arguments.get("scale")
+        self.calibration_file = os.path.join(lc.CALIBRATION_DIR, self.vision_args.get("calibration_file"))
         # Depth args
         self.display_frame = None
         self.cam_matrix = None
@@ -75,7 +73,8 @@ class Vision:
             h, w = (720, 2560)
             mid = w // 2
             if self.cam_matrix is not None and self.dist_coeffs is not None:
-                self.map1_x, self.map1_y, self.map2_x, self.map2_y, self.Q = self.generate_rectify_maps((mid, h), self.scale)
+                self.map1_x, self.map1_y, self.map2_x, self.map2_y, self.Q = self.generate_rectify_maps((mid, h),
+                                                                                                        self.scale)
                 server_logger.get_logger().info("Rectification maps generated")
             else:
                 raise ValueError(f"cam_matrix is set to: {self.cam_matrix}, dist_coeffs is set to: {self.dist_coeffs}")
@@ -141,7 +140,8 @@ class Vision:
 
                         # Contour center frame (bottom-right)
                         display_frame[highlighted_frame.shape[0]:highlighted_frame.shape[0] + contour_centers.shape[0],
-                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + contour_centers.shape[1]] = contour_centers
+                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + contour_centers.shape[
+                            1]] = contour_centers
 
                         if self.display_queue is not None:
                             self.display_queue.put((display_frame, left, points_3d, valid_dist_mask))
@@ -188,7 +188,7 @@ class Vision:
         h = int(h * scale)
 
         R = np.eye(3)
-        T = np.array([CAMERA_BASELINE, 0, 0])
+        T = np.array([lc.CAMERA_BASELINE, 0, 0])
 
         R1, R2, P1, P2, Q, _, _ = cv2.stereoRectify(
             self.cam_matrix, self.dist_coeffs,
@@ -211,17 +211,21 @@ class Vision:
         """
         valid_pixels = ~np.isnan(distance_map)  # Here we make sure they are all valid
 
-        range_mask = np.zeros_like(distance_map, dtype=np.uint8)  # We create an empty matrix with the same size and stuff as the map
+        range_mask = np.zeros_like(distance_map,
+                                   dtype=np.uint8)  # We create an empty matrix with the same size and stuff as the map
         in_range = (distance_map >= self.highlight_min_dist) & (distance_map <= self.highlight_max_dist) & valid_pixels
-        range_mask[in_range] = 1  # We populate each value that meets the criteria of our distance with 1 so we know what is in range
+        range_mask[
+            in_range] = 1  # We populate each value that meets the criteria of our distance with 1 so we know what is in range
 
         # We find contours to filter out what we highlight, contours basically act as a filter as it makes areas of congested regions
         contours, _ = cv2.findContours(range_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         highlight_mask = np.zeros_like(range_mask)  # This mask is the same dimensions as the range 0,1 mask
-        highlight = np.zeros_like(frame)  # This is what we will display, we create a new matrix the same size as the orig frame
+        highlight = np.zeros_like(
+            frame)  # This is what we will display, we create a new matrix the same size as the orig frame
         contour_centers = np.zeros_like(frame)
         for contour in contours:
-            if cv2.contourArea(contour) >= self.highlight_min_area:  # If the contour is big enough to be considered valid
+            if cv2.contourArea(
+                    contour) >= self.highlight_min_area:  # If the contour is big enough to be considered valid
                 epsilon = 0.02 * cv2.arcLength(contour, True)
                 approx_contour = cv2.approxPolyDP(contour, epsilon, True)
 
@@ -229,9 +233,9 @@ class Vision:
                 cv2.fillPoly(highlight_mask, [contour], self.highlight_color)
                 moments = cv2.moments(contour)
                 if moments['m00'] != 0:
-                    Cx = int(moments['m10']/moments['m00'])
-                    Cy = int(moments['m01']/moments['m00'])
-                    contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=5, color=(0,255,0), thickness=-1)
+                    Cx = int(moments['m10'] / moments['m00'])
+                    Cy = int(moments['m01'] / moments['m00'])
+                    contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=5, color=(0, 255, 0), thickness=-1)
         highlight[highlight_mask > 0] = self.highlight_color
 
         highlight = cv2.GaussianBlur(highlight, (5, 5), 0)  # Smoothing
@@ -272,8 +276,8 @@ def create_3d_map(points_3d, valid_mask, frame):
     point_cloud.colors = o3d.utility.Vector3dVector(valid_colors.astype(np.float64))
 
     # Filtering points
-    _, good_indicies = point_cloud.remove_statistical_outlier(nb_neighbors=80, std_ratio=2.0)
-    filtered_cloud = point_cloud.select_by_index(good_indicies)
+    _, good_indices = point_cloud.remove_statistical_outlier(nb_neighbors=80, std_ratio=2.0)
+    filtered_cloud = point_cloud.select_by_index(good_indices)
     o3d.visualization.draw_geometries([filtered_cloud])
 
 

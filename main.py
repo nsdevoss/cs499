@@ -1,6 +1,6 @@
 import multiprocessing
 from src.server.camera_server import StreamCameraServer
-from src.utils.config import Config
+from src.utils.config import camera_server_arguments, vision_args, emulator_args
 from src.pi import emulator
 from src.utils import utils
 from src.vision.vision import Vision
@@ -16,12 +16,14 @@ import time
 processes = []
 
 
-def play(display_queue, depth_map_enabled):
+def play(display_queue):
     points_3d = None
     valid_mask = None
     frame = None
     frame_count = 0
     start_time = time.time()
+    depth_map_enabled = vision_args.get("depth_map_capture")
+
     while True:
         if display_queue is not None and not display_queue.empty():
             disp, frame, points_3d, valid_mask = display_queue.get()
@@ -53,7 +55,7 @@ def play(display_queue, depth_map_enabled):
     cv2.destroyAllWindows()
 
 
-def start_camera_server(camera_server_arguments, vision_queue):
+def start_camera_server(vision_queue):
     host = camera_server_arguments.get("host")
     port = camera_server_arguments.get("port")
     socket_type = camera_server_arguments.get("socket_type")
@@ -63,7 +65,7 @@ def start_camera_server(camera_server_arguments, vision_queue):
     local_server.receive_video_stream()
 
 
-def start_emulator(ip_addr, emulator_args, camera_server_arguments):
+def start_emulator(ip_addr):
     video = emulator_args.get("video_name")
     stream_enabled = emulator_args.get("stream_enabled")
     encode_quality = emulator_args.get("encode_quality")
@@ -78,8 +80,8 @@ def start_emulator(ip_addr, emulator_args, camera_server_arguments):
         client.send_video()
 
 
-def start_vision_process(vision_queue, display_queue, vision_args, scale):
-    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, vision_args=vision_args, scale=scale)
+def start_vision_process(vision_queue, display_queue):
+    vision = Vision(frame_queue=vision_queue, display_queue=display_queue)
     vision.start()
 
 
@@ -91,7 +93,7 @@ def start_webserver():
     webServer.serve_forever()
 
 
-def main(camera_server_arguments, emulator_args, vision_args):
+def main():
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -113,23 +115,20 @@ def main(camera_server_arguments, emulator_args, vision_args):
     processes.append(webserver_process)
 
     ###### Vision start process ######
-    vision_process = multiprocessing.Process(target=start_vision_process,
-                                             args=(vision_queue, display_queue, vision_args, camera_server_arguments.get("scale")))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)
 
     ###### Display start process ######
-    play_process = multiprocessing.Process(target=play, args=(display_queue, vision_args.get("depth_map_capture")))
+    play_process = multiprocessing.Process(target=play, args=(display_queue,))
     play_process.start()
     server_logger.get_logger().info(f"Started display process with pid: {play_process.pid}")
     processes.append(play_process)
 
     ###### Camera Server start process ######
     server_logger.get_logger().info(f"Starting server on port: {camera_server_arguments.get("port")}")
-    camera_server_process = multiprocessing.Process(target=start_camera_server,
-                                             args=(camera_server_arguments, vision_queue),
-                                             name=f"Server Process: {camera_server_arguments.get("port")}")
+    camera_server_process = multiprocessing.Process(target=start_camera_server,args=(vision_queue,), name=f"Server Process: {camera_server_arguments.get("port")}")
     camera_server_process.start()
     server_logger.get_logger().info(f"Started server process with pid: {camera_server_process.pid}")
     processes.append(camera_server_process)
@@ -138,11 +137,8 @@ def main(camera_server_arguments, emulator_args, vision_args):
     if emulator_args.get("enabled"):
         logs_to_zip.append("client.log")
 
-        server_logger.get_logger().info(
-            f"Starting emulated client looking at: {ip_addr}:{camera_server_arguments.get("port")}.")
-        emu_process = multiprocessing.Process(target=start_emulator, args=(
-            ip_addr, emulator_args, camera_server_arguments),
-                                              name="Emulator Process")
+        server_logger.get_logger().info(f"Starting emulated client looking at: {ip_addr}:{camera_server_arguments.get("port")}.")
+        emu_process = multiprocessing.Process(target=start_emulator, args=(ip_addr,), name="Emulator Process")
         emu_process.start()
         server_logger.get_logger().info(f"Started emulator process with pid: {emu_process.pid}")
         processes.append(emu_process)
@@ -155,10 +151,4 @@ def main(camera_server_arguments, emulator_args, vision_args):
 
 
 if __name__ == "__main__":
-    Config.load_config()
-
-    emulator_args = Config.get("emulator_arguments")
-    vision_args = Config.get("vision_arguments")
-    camera_server_arguments = Config.get("camera_server_arguments")
-
-    main(camera_server_arguments, emulator_args, vision_args)
+    main()

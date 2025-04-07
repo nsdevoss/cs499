@@ -2,12 +2,10 @@ import numpy as np
 import cv2
 import glob
 import os
+import src.LocalCommon as lc
 import matplotlib.pyplot as plt
 from src.utils.utils import split_frame
 import time
-
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-CALIBRATION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../calibrations"))
 
 checkerboard_size = (8, 11)
 square_size = 20.0
@@ -163,7 +161,7 @@ def calibrate(max_reprojection_error=1.0, chessboard_size=checkerboard_size, sca
 
 
 def test_undistortion():
-    calibration_path = os.path.join(CALIBRATION_DIR, "calib_50", "calibration_50.npz")
+    calibration_path = os.path.join(lc.CALIBRATION_DIR, "calib_50", "calibration_50.npz")
     if not os.path.exists(calibration_path):
         print(f"Calibration file not found at {calibration_path}")
         return
@@ -172,7 +170,7 @@ def test_undistortion():
     camMatrix = data['camMatrix']
     distCoeff = data['distCoeff']
     newCamMatrix = data['newCamMatrix']
-    test_img_path = os.path.join(ROOT_DIR, 'calibration', 'stereo', 'img_12.jpg')
+    test_img_path = os.path.join(lc.ROOT_DIR, 'calibration', 'stereo', 'img_12.jpg')
 
     img = cv2.imread(test_img_path)
     if img is None:

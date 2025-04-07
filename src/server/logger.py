@@ -1,9 +1,7 @@
 import logging
 import os
+import src.LocalCommon as lc
 from datetime import datetime
-
-
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
 
 class Logger:
@@ -31,8 +29,8 @@ class Logger:
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.DEBUG)
 
-        dir_path = os.path.join(ROOT_DIR, self.log_dir)
-        log_path = os.path.join(ROOT_DIR, self.log_dir, log_file)
+        dir_path = os.path.join(lc.ROOT_DIR, self.log_dir)
+        log_path = os.path.join(lc.ROOT_DIR, self.log_dir, log_file)
 
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)

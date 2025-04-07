@@ -4,12 +4,11 @@ import cv2
 import numpy as np
 import struct
 import time
+import src.LocalCommon as lc
 from turbojpeg import TurboJPEG
 from src.server.logger import server_logger
 from src.server.server import SocketServer
 
-CAMERA_DEFAULT_FPS = 60
-MAX_UDP_PACKET = 65536
 
 """
 StreamCameraServer Class
@@ -38,7 +37,7 @@ class StreamCameraServer(SocketServer):
     def receive_video_stream(self):
         log_writer = server_logger.get_logger()
 
-        frame_rate = int(CAMERA_DEFAULT_FPS / self.fps)
+        frame_rate = int(lc.DEFAULT_CAMERA_FPS / self.fps)
         while True:
             log_writer.info("Waiting for a connection...")
 
@@ -185,7 +184,7 @@ class StreamCameraServer(SocketServer):
                     seq_num = struct.unpack("Q", packet[:8])[0]  # This is the number, ex: seq_num  = [Sequence Number: 1]
                     chunk = packet[8:]  # This is the chunk from the packet, ex: chunk = [Data]
 
-                    if len(chunk) > MAX_UDP_PACKET:
+                    if len(chunk) > lc.MAX_UDP_PACKET:
                         log_writer.error(f"Chunk too large: {len(chunk)} bytes. Dropping...")
                         continue
 
