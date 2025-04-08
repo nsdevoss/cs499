@@ -1,9 +1,9 @@
 import subprocess
-import tkinter as tk
 import os
 import zipfile
 import socket
 import platform
+import tkinter as tk
 from src.server.logger import server_logger, client_logger
 
 

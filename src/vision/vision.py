@@ -4,10 +4,9 @@ import queue
 import numpy as np
 import os
 import open3d as o3d
-from src.server.logger import server_logger
-from src.utils.config import vision_args, camera_server_arguments
-from src.vision.detection import detector
 import src.LocalCommon as lc
+from src.server.logger import server_logger
+from src.vision.detection import detector
 
 
 class Vision:
@@ -20,11 +19,11 @@ class Vision:
     :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, display_queue):
+    def __init__(self, frame_queue, display_queue, vision_args, scale):
         self.frame_queue = frame_queue
         self.display_queue = display_queue
         self.vision_args = vision_args
-        self.scale = camera_server_arguments.get("scale")
+        self.scale = scale
         self.calibration_file = os.path.join(lc.CALIBRATION_DIR, self.vision_args.get("calibration_file"))
         # Depth args
         self.display_frame = None
@@ -79,6 +78,13 @@ class Vision:
             else:
                 raise ValueError(f"cam_matrix is set to: {self.cam_matrix}, dist_coeffs is set to: {self.dist_coeffs}")
 
+            contour_refresh_map = time.time()
+            frame = self.frame_queue.get()
+            h, w = frame.shape[:2]
+            mid = w // 2
+            left_frame = frame[:, :mid]
+            contour_map = np.zeros_like(left_frame)
+
             while True:
                 try:
                     frame = self.frame_queue.get()
@@ -116,35 +122,52 @@ class Vision:
                             np.uint8)
 
                         distance_map, points_3d, valid_dist_mask = self.disparity_to_distance(filtered_disp)
-                        highlighted_frame, contour_centers = self.highlight_distance_range(left, distance_map)
+                        highlighted_frame, contour_centers, contour_map = self.highlight_distance_range(left,
+                                                                                                        distance_map,
+                                                                                                        contour_map)
 
                         disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_INFERNO)
 
                         if display_frame is None or display_frame.shape[1] != highlighted_frame.shape[1] + \
                                 disp_colored.shape[1]:
+                            # Increase height to accommodate 3 rows instead of 2
                             display_frame = np.zeros(
-                                (max(highlighted_frame.shape[0], disp_colored.shape[0]) + left.shape[0],
+                                (max(highlighted_frame.shape[0], disp_colored.shape[0]) * 3,
+                                 # Triple the height for 3 rows
                                  highlighted_frame.shape[1] + disp_colored.shape[1], 3),
                                 dtype=np.uint8
                             )
 
-                        display_frame[:highlighted_frame.shape[0], :highlighted_frame.shape[1]] = highlighted_frame
-
-                        # Disparity frame (top-right)
+                        # First row (top)
+                        display_frame[:highlighted_frame.shape[0],
+                        :highlighted_frame.shape[1]] = highlighted_frame  # Top-left
                         display_frame[:disp_colored.shape[0],
-                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + disp_colored.shape[1]] = disp_colored
+                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + disp_colored.shape[
+                            1]] = disp_colored  # Top-right
 
-                        # Original left frame (bottom-left)
-                        display_frame[highlighted_frame.shape[0]:highlighted_frame.shape[0] + left.shape[0],
-                        :left.shape[1]] = left
+                        # Second row (middle)
+                        middle_y_offset = highlighted_frame.shape[0]
+                        display_frame[middle_y_offset:middle_y_offset + contour_centers.shape[0],
+                        :contour_centers.shape[1]] = contour_centers  # Middle-left
+                        display_frame[middle_y_offset:middle_y_offset + contour_map.shape[0],
+                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + contour_map.shape[
+                            1]] = contour_map  # Middle-right
 
-                        # Contour center frame (bottom-right)
-                        display_frame[highlighted_frame.shape[0]:highlighted_frame.shape[0] + contour_centers.shape[0],
-                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + contour_centers.shape[
-                            1]] = contour_centers
+                        # Third row (bottom) - original frames
+                        bottom_y_offset = middle_y_offset + highlighted_frame.shape[0]
+                        display_frame[bottom_y_offset:bottom_y_offset + left_frame.shape[0],
+                        :left_frame.shape[1]] = left_frame  # Bottom-left (original left frame)
+                        display_frame[bottom_y_offset:bottom_y_offset + right_frame.shape[0],
+                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + right_frame.shape[
+                            1]] = right_frame  # Bottom-right (original right frame)
 
                         if self.display_queue is not None:
                             self.display_queue.put((display_frame, left, points_3d, valid_dist_mask))
+
+                        end_time = time.time()
+                        if end_time - contour_refresh_map >= 10.0:
+                            contour_map = np.zeros_like(left_frame)
+                            contour_refresh_map = end_time
 
                         del frame, disp_colored, display_frame
 
@@ -202,7 +225,7 @@ class Vision:
 
         return map1_x, map1_y, map2_x, map2_y, Q
 
-    def highlight_distance_range(self, frame, distance_map):
+    def highlight_distance_range(self, frame, distance_map, contour_map):
         """
         This function draws the colored outline on the image that tells us what is in range
         :param frame: This is the visual color normal frame, 3D array
@@ -235,7 +258,13 @@ class Vision:
                 if moments['m00'] != 0:
                     Cx = int(moments['m10'] / moments['m00'])
                     Cy = int(moments['m01'] / moments['m00'])
-                    contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=5, color=(0, 255, 0), thickness=-1)
+                    contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
+                    contour_map = cv2.circle(contour_map, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
+                    if not np.isnan(distance_map[Cy, Cx]):
+                        center_distance = distance_map[Cy, Cx]
+                        detector.get_detection((Cx, Cy), center_distance)
+                    else:
+                        center_distance = None
         highlight[highlight_mask > 0] = self.highlight_color
 
         highlight = cv2.GaussianBlur(highlight, (5, 5), 0)  # Smoothing
@@ -245,7 +274,7 @@ class Vision:
         blended_contour_centers = cv2.addWeighted(contour_centers, self.highlight_alpha, frame,
                                                   1 - self.highlight_alpha, 0)
 
-        return blended_frame, blended_contour_centers
+        return blended_frame, blended_contour_centers, contour_map
 
     def disparity_to_distance(self, disparity):
         """

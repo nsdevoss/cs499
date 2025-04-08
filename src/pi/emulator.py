@@ -1,15 +1,15 @@
 import socket
 import cv2
 import os
-from src.utils import utils
 import struct
 import ipaddress
 import time
 import concurrent.futures
+import src.LocalCommon as lc
+from src.utils import utils
 from turbojpeg import TurboJPEG, TJFLAG_FASTDCT
 from src.server.logger import client_logger
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 MAX_UDP_PACKET = 8216
 
 
@@ -49,13 +49,13 @@ class Emulator:
         if stream_enabled:
             self.video = cv2.VideoCapture(0)
         else:
-            video_path = os.path.join(ROOT_DIR, "assets/videos", f"{video}.mp4")
+            video_path = os.path.join(lc.ROOT_DIR, "assets/videos", f"{video}.mp4")
             client_logger.get_logger().info(f"Video path: {video_path}")
             if os.path.exists(video_path):
                 self.video = cv2.VideoCapture(video_path)
             else:
                 client_logger.get_logger().warning(f"Video path doesn't exist, using default video")
-                self.video = cv2.VideoCapture(os.path.join(ROOT_DIR, "assets/videos", "car.mp4"))
+                self.video = cv2.VideoCapture(os.path.join(lc.ROOT_DIR, "assets/videos", "car.mp4"))
         self.video.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.connect_to_server()
         client_logger.get_logger().info("Emulator initialized successfully.")
