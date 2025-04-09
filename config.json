@@ -2,20 +2,20 @@
   "emulator_arguments": {
     "enabled": true,
     "stream_enabled": false,
-    "video_name": "flag2",
+    "video_name": "flag1",
     "encode_quality": 100
   },
   "camera_server_arguments": {
     "port": 9000,
     "host": "0.0.0.0",
     "socket_type": "TCP",
-    "fps": 30
+    "fps": 30,
+    "scale": 0.2
   },
   "vision_arguments": {
     "enabled": true,
     "depth_map_capture": true,
     "calibration_file": "calib_50/calibration_50.npz",
-    "scale": 0.2,
     "StereoSGBM_args": {
       "minDisparity": 0,
       "numDisparities": 32,

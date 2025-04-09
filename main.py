@@ -5,7 +5,7 @@ from src.utils import utils
 from src.vision.vision import Vision
 from src.vision.vision import create_3d_map
 from datetime import datetime
-from src.WebServer.webserver import MyServer
+from src.WebServer.app import WebServerDisplay
 from http.server import HTTPServer
 from src.server.logger import server_logger
 from src.server.app_server import AppCommunicationServer
@@ -70,6 +70,10 @@ def start_app_server():
     app_server = AppCommunicationServer()
     app_server.connect_to_app()
 
+def start_webserver(display_queue):
+    web_server = WebServerDisplay(display_queue=display_queue)
+    web_server.run()
+
 def start_emulator(ip_addr, emulator_args, camera_server_args):
     video = emulator_args.get("video_name")
     stream_enabled = emulator_args.get("stream_enabled")
@@ -90,14 +94,6 @@ def start_vision_process(vision_queue, display_queue, vision_args, scale):
     vision.start()
 
 
-def start_webserver():
-    hostName = "0.0.0.0"
-    serverPort = 8080
-
-    webServer = HTTPServer((hostName, serverPort), MyServer)
-    webServer.serve_forever()
-
-
 def main(camera_server_args, emulator_args, vision_args):
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -115,7 +111,7 @@ def main(camera_server_args, emulator_args, vision_args):
         display_queue = multiprocessing.Queue()
 
     ###### Web Server start process ######
-    webserver_process = multiprocessing.Process(target=start_webserver)
+    webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,))
     webserver_process.start()
     processes.append(webserver_process)
 
@@ -126,10 +122,10 @@ def main(camera_server_args, emulator_args, vision_args):
     processes.append(vision_process)
 
     ###### Display start process ######
-    play_process = multiprocessing.Process(target=play, args=(display_queue, vision_args.get("depth_map_capture")))
-    play_process.start()
-    server_logger.get_logger().info(f"Started display process with pid: {play_process.pid}")
-    processes.append(play_process)
+    # play_process = multiprocessing.Process(target=play, args=(display_queue, vision_args.get("depth_map_capture")))
+    # play_process.start()
+    # server_logger.get_logger().info(f"Started display process with pid: {play_process.pid}")
+    # processes.append(play_process)
 
     ###### Camera Server start process ######
     server_logger.get_logger().info(f"Starting server on port: {camera_server_args.get('port')}")
@@ -139,11 +135,11 @@ def main(camera_server_args, emulator_args, vision_args):
     processes.append(camera_server_process)
 
     ###### App Server start process
-    server_logger.get_logger().info(f"Starting app server on port: 9001")
-    app_server_process = multiprocessing.Process(target=start_app_server)
-    app_server_process.start()
-    server_logger.get_logger().info(f"Started app server process with pid: {app_server_process.pid}")
-    processes.append(app_server_process)
+    # server_logger.get_logger().info(f"Starting app server on port: 9001")
+    # app_server_process = multiprocessing.Process(target=start_app_server)
+    # app_server_process.start()
+    # server_logger.get_logger().info(f"Started app server process with pid: {app_server_process.pid}")
+    # processes.append(app_server_process)
 
     ###### Emulator start process ######
     if emulator_args.get("enabled"):
