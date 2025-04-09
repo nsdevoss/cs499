@@ -5,7 +5,7 @@ from src.utils import utils
 from src.vision.vision import Vision
 from src.vision.vision import create_3d_map
 from datetime import datetime
-from src.WebServer.webserver import MyServer
+from src.WebServer.app import WebServerDisplay
 from http.server import HTTPServer
 from src.server.logger import server_logger
 from src.server.app_server import AppCommunicationServer
@@ -70,6 +70,10 @@ def start_app_server(object_detected):
     app_server = AppCommunicationServer(object_detected)
     app_server.connect_to_app()
 
+def start_webserver(display_queue):
+    web_server = WebServerDisplay(display_queue=display_queue)
+    web_server.run()
+
 def start_emulator(ip_addr, emulator_args, camera_server_args):
     video = emulator_args.get("video_name")
     stream_enabled = emulator_args.get("stream_enabled")
@@ -90,15 +94,7 @@ def start_vision_process(vision_queue, display_queue, vision_args, scale, object
     vision.start()
 
 
-def start_webserver():
-    hostName = "0.0.0.0"
-    serverPort = 8080
-
-    webServer = HTTPServer((hostName, serverPort), MyServer)
-    webServer.serve_forever()
-
-
-def main(camera_server_args, emulator_args, vision_args, object_detected):
+def main(camera_server_args, emulator_args, vision_args):
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -115,21 +111,21 @@ def main(camera_server_args, emulator_args, vision_args, object_detected):
         display_queue = multiprocessing.Queue()
 
     ###### Web Server start process ######
-    webserver_process = multiprocessing.Process(target=start_webserver)
+    webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,))
     webserver_process.start()
     processes.append(webserver_process)
 
     ###### Vision start process ######
-    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, vision_args, camera_server_args.get("scale"), object_detected))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, vision_args, camera_server_args.get("scale")))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)
 
     ###### Display start process ######
-    play_process = multiprocessing.Process(target=play, args=(display_queue, vision_args.get("depth_map_capture")))
-    play_process.start()
-    server_logger.get_logger().info(f"Started display process with pid: {play_process.pid}")
-    processes.append(play_process)
+    # play_process = multiprocessing.Process(target=play, args=(display_queue, vision_args.get("depth_map_capture")))
+    # play_process.start()
+    # server_logger.get_logger().info(f"Started display process with pid: {play_process.pid}")
+    # processes.append(play_process)
 
     ###### Camera Server start process ######
     server_logger.get_logger().info(f"Starting server on port: {camera_server_args.get('port')}")
@@ -168,7 +164,7 @@ if __name__ == "__main__":
     camera_server_args = Config.get("camera_server_arguments")
     emulator_args = Config.get("emulator_arguments")
     vision_args = Config.get("vision_arguments")
-    
+
     object_detected = multiprocessing.Value('b', False)
 
     main(camera_server_args, emulator_args, vision_args, object_detected)
