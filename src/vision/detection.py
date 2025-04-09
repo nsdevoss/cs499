@@ -18,11 +18,9 @@ class Detection:
 
 
     def get_detection(self, point, center_point):
-        self._last_detection_time = time.time()
-        self._object_detected = True
+        # self._last_detection_time = time.time()
         self.detected_point = point
-        if center_point < 0.35:
-            print(f"Detected point: {self.detected_point} with distance {center_point:.2f}m")
+       #  print(f"Detected point: {self.detected_point} with distance {center_point:.2f}m")
 
     def has_recent_connection(self):
         if self._last_detection_time is None:
@@ -38,8 +36,11 @@ class Detection:
     def set_dimensions(self, dimension):
         self.dimensions = dimension
 
+    def set_detection(self, detected):
+        self._object_detected = detected
+
     def get_object_detected(self):
-        return self.has_recent_connection()
+        return self._object_detected
 
     def get_dimensions(self):
         return self.dimensions

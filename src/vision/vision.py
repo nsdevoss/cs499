@@ -19,7 +19,7 @@ class Vision:
     :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, display_queue, vision_args, scale):
+    def __init__(self, frame_queue, display_queue, vision_args, scale, object_detected):
         self.frame_queue = frame_queue
         self.display_queue = display_queue
         self.vision_args = vision_args
@@ -41,6 +41,8 @@ class Vision:
         self.highlight_color = tuple(int(c) for c in self.vision_args.get("distance_args").get("color"))
         self.highlight_alpha = self.vision_args.get("distance_args").get("alpha")
         self.highlight_min_area = self.vision_args.get("distance_args").get("min_area")
+        
+        self.object_detected = object_detected
 
     def start(self):
         if self.vision_args.get("enabled"):
@@ -122,10 +124,11 @@ class Vision:
                             np.uint8)
 
                         distance_map, points_3d, valid_dist_mask = self.disparity_to_distance(filtered_disp)
-                        highlighted_frame, contour_centers, contour_map = self.highlight_distance_range(left,
+                        highlighted_frame, contour_centers, contour_map, object_in_frame = self.highlight_distance_range(left,
                                                                                                         distance_map,
                                                                                                         contour_map)
-
+                        self.object_detected.value = object_in_frame
+                            
                         disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_INFERNO)
 
                         if display_frame is None or display_frame.shape[1] != highlighted_frame.shape[1] + \
@@ -246,6 +249,7 @@ class Vision:
         highlight = np.zeros_like(
             frame)  # This is what we will display, we create a new matrix the same size as the orig frame
         contour_centers = np.zeros_like(frame)
+        object_found = False
         for contour in contours:
             if cv2.contourArea(
                     contour) >= self.highlight_min_area:  # If the contour is big enough to be considered valid
@@ -258,6 +262,7 @@ class Vision:
                 if moments['m00'] != 0:
                     Cx = int(moments['m10'] / moments['m00'])
                     Cy = int(moments['m01'] / moments['m00'])
+                    object_found = True
                     contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
                     contour_map = cv2.circle(contour_map, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
                     if not np.isnan(distance_map[Cy, Cx]):
@@ -265,6 +270,7 @@ class Vision:
                         detector.get_detection((Cx, Cy), center_distance)
                     else:
                         center_distance = None
+                
         highlight[highlight_mask > 0] = self.highlight_color
 
         highlight = cv2.GaussianBlur(highlight, (5, 5), 0)  # Smoothing
@@ -274,7 +280,7 @@ class Vision:
         blended_contour_centers = cv2.addWeighted(contour_centers, self.highlight_alpha, frame,
                                                   1 - self.highlight_alpha, 0)
 
-        return blended_frame, blended_contour_centers, contour_map
+        return blended_frame, blended_contour_centers, contour_map, object_found
 
     def disparity_to_distance(self, disparity):
         """

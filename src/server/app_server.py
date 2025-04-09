@@ -15,9 +15,10 @@ class AppCommunicationServer(SocketServer):
     Tips:
         You can choose whether it is better for TCP or UDP for connecting to the app, but it will most likely be TCP.
     """
-    def __init__(self, host="0.0.0.0", port=9001, socket_type="TCP"):
+    def __init__(self, object_detected, host="0.0.0.0", port=9001, socket_type="TCP"):
         super().__init__(host, port, socket_type)
         self.log_writer = server_logger.get_logger()
+        self.object_detected = object_detected
 
     def connect_to_app(self):
         while True:
@@ -32,23 +33,20 @@ class AppCommunicationServer(SocketServer):
             init_msg = "This is the first message\n"
             # conn.send(init_msg.encode())
             self.log_writer.info(f"Sent initial message: {init_msg}")
-            object_detected = 0
+            
             while True:
-                frame_detected = detector.get_object_detected()
-                if frame_detected and not object_detected:
+                print(f"APP SERVER Receiving object_detected.value: {self.object_detected.value}")
+                if self.object_detected.value:
                     msg = f"Detected object\n"
                     self.log_writer.info(f"Sending message: {msg}")
                     # conn.send(msg.encode())
                     # self.log_writer.info(f"Sent message: {msg} to {addr}")
-                    object_detected = 1
-                elif not frame_detected and object_detected:
+                else:
                     msg = f"No detected object\n"
                     self.log_writer.info(f"Sending message: {msg}")
                     # conn.send(msg.encode())
                     # self.log_writer.info(f"Sent message: {msg} to {addr}")
-                    object_detected = 0
-                else:
-                    continue
+
         except Exception as e:
             # conn.close()
             self.log_writer.error(f"Error sending message: {e}")

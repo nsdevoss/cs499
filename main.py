@@ -66,8 +66,8 @@ def start_camera_server(vision_queue, camera_server_args):
     local_server.receive_video_stream()
 
 
-def start_app_server():
-    app_server = AppCommunicationServer()
+def start_app_server(object_detected):
+    app_server = AppCommunicationServer(object_detected)
     app_server.connect_to_app()
 
 def start_emulator(ip_addr, emulator_args, camera_server_args):
@@ -85,8 +85,8 @@ def start_emulator(ip_addr, emulator_args, camera_server_args):
         client.send_video()
 
 
-def start_vision_process(vision_queue, display_queue, vision_args, scale):
-    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, vision_args=vision_args, scale=scale)
+def start_vision_process(vision_queue, display_queue, vision_args, scale, object_detected):
+    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, vision_args=vision_args, scale=scale, object_detected=object_detected)
     vision.start()
 
 
@@ -98,7 +98,7 @@ def start_webserver():
     webServer.serve_forever()
 
 
-def main(camera_server_args, emulator_args, vision_args):
+def main(camera_server_args, emulator_args, vision_args, object_detected):
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -120,7 +120,7 @@ def main(camera_server_args, emulator_args, vision_args):
     processes.append(webserver_process)
 
     ###### Vision start process ######
-    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, vision_args, camera_server_args.get("scale")))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, vision_args, camera_server_args.get("scale"), object_detected))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)
@@ -140,7 +140,7 @@ def main(camera_server_args, emulator_args, vision_args):
 
     ###### App Server start process
     server_logger.get_logger().info(f"Starting app server on port: 9001")
-    app_server_process = multiprocessing.Process(target=start_app_server)
+    app_server_process = multiprocessing.Process(target=start_app_server, args=(object_detected,))
     app_server_process.start()
     server_logger.get_logger().info(f"Started app server process with pid: {app_server_process.pid}")
     processes.append(app_server_process)
@@ -168,5 +168,7 @@ if __name__ == "__main__":
     camera_server_args = Config.get("camera_server_arguments")
     emulator_args = Config.get("emulator_arguments")
     vision_args = Config.get("vision_arguments")
+    
+    object_detected = multiprocessing.Value('b', False)
 
-    main(camera_server_args, emulator_args, vision_args)
+    main(camera_server_args, emulator_args, vision_args, object_detected)
