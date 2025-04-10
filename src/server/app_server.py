@@ -23,29 +23,28 @@ class AppCommunicationServer(SocketServer):
     def connect_to_app(self):
         while True:
             self.log_writer.info("Waiting for a connection...")
-            # conn, addr = self.server_socket.accept()
-            # self.log_writer.info(f"Got a connection from: {addr}")
-            self.send_message()
+            conn, addr = self.server_socket.accept()
+            self.log_writer.info(f"Got a connection from: {addr}")
+            self.send_message(conn, addr)
 
 
-    def send_message(self):
+    def send_message(self, conn, addr):
         try:
             init_msg = "This is the first message\n"
-            # conn.send(init_msg.encode())
+            conn.send(init_msg.encode())
             self.log_writer.info(f"Sent initial message: {init_msg}")
             
             while True:
-                print(f"APP SERVER Receiving object_detected.value: {self.object_detected.value}")
                 if self.object_detected.value:
                     msg = f"Detected object\n"
                     self.log_writer.info(f"Sending message: {msg}")
-                    # conn.send(msg.encode())
-                    # self.log_writer.info(f"Sent message: {msg} to {addr}")
+                    conn.send(msg.encode())
+                    self.log_writer.info(f"Sent message: {msg} to {addr}")
                 else:
                     msg = f"No detected object\n"
                     self.log_writer.info(f"Sending message: {msg}")
-                    # conn.send(msg.encode())
-                    # self.log_writer.info(f"Sent message: {msg} to {addr}")
+                    conn.send(msg.encode())
+                    self.log_writer.info(f"Sent message: {msg} to {addr}")
 
         except Exception as e:
             # conn.close()

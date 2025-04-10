@@ -3,7 +3,7 @@
     "enabled": true,
     "stream_enabled": false,
     "video_name": "shovel",
-    "encode_quality": 70
+    "encode_quality": 100
   },
   "camera_server_arguments": {
     "port": 9000,

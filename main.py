@@ -5,7 +5,7 @@ from src.utils import utils
 from src.vision.vision import Vision
 from src.vision.vision import create_3d_map
 from datetime import datetime
-from src.WebServer.app import WebServerDisplay
+from src.WebServer.web_server import WebServerDisplay
 from http.server import HTTPServer
 from src.server.logger import server_logger
 from src.server.app_server import AppCommunicationServer
@@ -94,7 +94,7 @@ def start_vision_process(vision_queue, display_queue, vision_args, scale, object
     vision.start()
 
 
-def main(camera_server_args, emulator_args, vision_args):
+def main(camera_server_args, emulator_args, vision_args, object_detected):
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -116,7 +116,7 @@ def main(camera_server_args, emulator_args, vision_args):
     processes.append(webserver_process)
 
     ###### Vision start process ######
-    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, vision_args, camera_server_args.get("scale")))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, vision_args, camera_server_args.get("scale"), object_detected))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)

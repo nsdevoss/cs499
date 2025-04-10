@@ -29,7 +29,7 @@ class StreamCameraServer(SocketServer):
         self.fps = fps
         self.frame_interval = 1.0 / fps
         self.shutdown = False
-        self.jpeg = TurboJPEG("C:/libjpeg-turbo-gcc64/bin/libturbojpeg.dll")
+        self.jpeg = TurboJPEG()
         super().__init__(host, port, socket_type)
 
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576)

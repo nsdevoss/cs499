@@ -34,7 +34,7 @@ class Emulator:
         self.shutdown = False
         self.socket_type = socket_type
         self.scale = scale
-        self.jpeg = TurboJPEG("C:/libjpeg-turbo-gcc64/bin/libturbojpeg.dll")
+        self.jpeg = TurboJPEG()
         self.encode_quality = encode_quality
         try:
             assert self.socket_type == "TCP" or self.socket_type == "UDP", f'Socket type must be "TCP" or "UDP", got: {self.socket_type}'
