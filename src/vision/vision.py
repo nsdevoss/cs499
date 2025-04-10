@@ -19,9 +19,10 @@ class Vision:
     :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, display_queue, vision_args, scale, object_detected):
+    def __init__(self, frame_queue, display_queue, info_queue, vision_args, scale, object_detected):
         self.frame_queue = frame_queue
         self.display_queue = display_queue
+        self.info_queue = info_queue
         self.vision_args = vision_args
         self.scale = scale
         self.calibration_file = os.path.join(lc.CALIBRATION_DIR, self.vision_args.get("calibration_file"))
@@ -165,7 +166,8 @@ class Vision:
                             1]] = right_frame  # Bottom-right (original right frame)
 
                         if self.display_queue is not None:
-                            self.display_queue.put((display_frame, left, points_3d, valid_dist_mask))
+                            self.display_queue.put(display_frame)
+                            self.info_queue.put((left, points_3d, valid_dist_mask))
 
                         end_time = time.time()
                         if end_time - contour_refresh_map >= 10.0:

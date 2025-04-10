@@ -11,7 +11,7 @@ lock = threading.Lock()
 def frame_producer(display_queue):
     global latest_frame
     while True:
-        disp, frame, points_3d, valid_mask = display_queue.get()
+        disp = display_queue.get()
         ret, buffer = cv2.imencode('.jpg', disp)
         with lock:
             latest_frame = buffer.tobytes()

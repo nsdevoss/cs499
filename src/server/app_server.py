@@ -22,7 +22,7 @@ class AppCommunicationServer(SocketServer):
 
     def connect_to_app(self):
         while True:
-            self.log_writer.info("Waiting for a connection...")
+            self.log_writer.info(f"Waiting for a connection on {self.host}:{self.port}")
             conn, addr = self.server_socket.accept()
             self.log_writer.info(f"Got a connection from: {addr}")
             self.send_message(conn, addr)
