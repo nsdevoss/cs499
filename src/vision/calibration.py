@@ -1,11 +1,11 @@
-import numpy as np
 import cv2
 import glob
 import os
+import time
+import numpy as np
 import src.LocalCommon as lc
 import matplotlib.pyplot as plt
 from src.utils.utils import split_frame
-import time
 
 checkerboard_size = (8, 11)
 square_size = 20.0

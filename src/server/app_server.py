@@ -1,6 +1,3 @@
-import socket
-import time
-from src.vision.detection import detector
 from src.server.logger import server_logger
 from src.server.server import SocketServer
 
@@ -27,7 +24,6 @@ class AppCommunicationServer(SocketServer):
             self.log_writer.info(f"Got a connection from: {addr}")
             self.send_message(conn, addr)
 
-
     def send_message(self, conn, addr):
         try:
             init_msg = "This is the first message\n"
@@ -47,7 +43,7 @@ class AppCommunicationServer(SocketServer):
                     self.log_writer.info(f"Sent message: {msg} to {addr}")
 
         except Exception as e:
-            # conn.close()
+            conn.close()
             self.log_writer.error(f"Error sending message: {e}")
 
 

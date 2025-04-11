@@ -1,35 +1,33 @@
 import gc
 import socket
 import cv2
-import numpy as np
 import struct
 import time
+import numpy as np
 import src.LocalCommon as lc
 from turbojpeg import TurboJPEG
-from src.server.logger import server_logger
 from src.server.server import SocketServer
-
-
-"""
-StreamCameraServer Class
-
-This is in charge of making a server and opening a port to find a camera client. Each server only opens up 1 port so we run 2 of them in main.py
-
-Params:
-:param host: This is who we are looking for, 0.0.0.0 just means that we are looking for any IP address on the network. You could change this to the client's IP address to directly look for them. (Plz don't do, default is fine)
-:param port: The port we are opening up on this instance. Default doesn't mean anything since we handle all of this in main.py, I'm just too lazy to change the argument order
-:param frame_queue: This passes the frame queue (more on this in main.py and below)
-"""
+from src.server.logger import server_logger
 
 
 class StreamCameraServer(SocketServer):
+    """
+    StreamCameraServer Class
+
+    This is in charge of making a server and opening a port to find a camera client. Each server only opens up 1 port so we run 2 of them in main.py
+
+    Params:
+    :param host: This is who we are looking for, 0.0.0.0 just means that we are looking for any IP address on the network. You could change this to the client's IP address to directly look for them. (Plz don't do, default is fine)
+    :param port: The port we are opening up on this instance. Default doesn't mean anything since we handle all of this in main.py, I'm just too lazy to change the argument order
+    :param frame_queue: This passes the frame queue (more on this in main.py and below)
+    """
     def __init__(self, host="0.0.0.0", port=9000, socket_type="TCP", vision_queue=None, display=True, fps=60):
         self.vision_queue = vision_queue
         self.display = display
         self.fps = fps
         self.frame_interval = 1.0 / fps
         self.shutdown = False
-        self.jpeg = TurboJPEG()
+        self.jpeg = TurboJPEG("C:/libjpeg-turbo-gcc64/bin/libturbojpeg.dll")
         super().__init__(host, port, socket_type)
 
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576)

@@ -5,9 +5,8 @@ import pickle
 import struct
 import time
 import multiprocessing
-from src.server.logger import client_logger
 from src.utils.utils import get_ip_address
-
+from src.server.logger import client_logger
 
 
 class CameraClient:

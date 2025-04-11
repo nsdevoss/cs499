@@ -1,12 +1,10 @@
 import time
 import cv2
 import queue
-import numpy as np
 import os
-import open3d as o3d
+import numpy as np
 import src.LocalCommon as lc
 from src.server.logger import server_logger
-from src.vision.detection import detector
 
 
 class Vision:
@@ -88,6 +86,7 @@ class Vision:
             left_frame = frame[:, :mid]
             contour_map = np.zeros_like(left_frame)
 
+            visualization_time = time.time()
             while True:
                 try:
                     frame = self.frame_queue.get()
@@ -167,12 +166,15 @@ class Vision:
 
                         if self.display_queue is not None:
                             self.display_queue.put(display_frame)
-                            self.info_queue.put((left, points_3d, valid_dist_mask))
 
                         end_time = time.time()
                         if end_time - contour_refresh_map >= 10.0:
                             contour_map = np.zeros_like(left_frame)
                             contour_refresh_map = end_time
+
+                        if end_time - visualization_time >= self.vision_args.get("refresh_rate") and self.info_queue is not None:
+                            self.info_queue.put((left, points_3d, valid_dist_mask))
+                            visualization_time = end_time
 
                         del frame, disp_colored, display_frame
 
@@ -297,28 +299,3 @@ class Vision:
         distance_map[~valid_mask] = np.nan  # And we fill in the matrix with valid values
 
         return distance_map, points_3d, valid_mask
-
-
-def create_3d_map(points_3d, valid_mask, frame):
-    # Filtering initially for valid points (not nan, infinity, etc)
-    valid_points = points_3d[valid_mask].reshape(-1, 3)
-    valid_colors = frame[valid_mask][:, [2, 1, 0]].reshape(-1, 3) / 255.0
-
-    valid_points[:, 2] = -valid_points[:, 2]  # Inverse Z
-    valid_points[:, 1] = -valid_points[:, 1]  # Flip over X axis
-
-    # Making the actual Open3D object and just populating what we need
-    point_cloud = o3d.geometry.PointCloud()
-    point_cloud.points = o3d.utility.Vector3dVector(valid_points.astype(np.float64))
-    point_cloud.colors = o3d.utility.Vector3dVector(valid_colors.astype(np.float64))
-
-    # Filtering points
-    _, good_indices = point_cloud.remove_statistical_outlier(nb_neighbors=80, std_ratio=2.0)
-    filtered_cloud = point_cloud.select_by_index(good_indices)
-    o3d.visualization.draw_geometries([filtered_cloud])
-
-
-if __name__ == "__main__":
-    # dont listen to this
-    array = np.ones((1000, 1000, 3), dtype=np.uint8)
-    create_3d_map(array)

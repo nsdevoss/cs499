@@ -2,7 +2,7 @@
   "emulator_arguments": {
     "enabled": true,
     "stream_enabled": false,
-    "video_name": "shovel",
+    "video_name": "flag1",
     "encode_quality": 100
   },
   "camera_server_arguments": {
@@ -15,6 +15,7 @@
   "vision_arguments": {
     "enabled": true,
     "depth_map_capture": true,
+    "refresh_rate": 10,
     "calibration_file": "calib_50/calibration_50.npz",
     "StereoSGBM_args": {
       "minDisparity": 0,

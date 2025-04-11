@@ -7,8 +7,8 @@ import time
 import concurrent.futures
 import src.LocalCommon as lc
 from src.utils import utils
-from turbojpeg import TurboJPEG, TJFLAG_FASTDCT
 from src.server.logger import client_logger
+from turbojpeg import TurboJPEG, TJFLAG_FASTDCT
 
 MAX_UDP_PACKET = 8216
 
@@ -34,7 +34,7 @@ class Emulator:
         self.shutdown = False
         self.socket_type = socket_type
         self.scale = scale
-        self.jpeg = TurboJPEG()
+        self.jpeg = TurboJPEG("C:/libjpeg-turbo-gcc64/bin/libturbojpeg.dll")
         self.encode_quality = encode_quality
         try:
             assert self.socket_type == "TCP" or self.socket_type == "UDP", f'Socket type must be "TCP" or "UDP", got: {self.socket_type}'

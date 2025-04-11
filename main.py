@@ -1,6 +1,4 @@
 import multiprocessing
-import cv2
-import time
 from src.pi import emulator
 from src.utils import utils
 from datetime import datetime
@@ -11,48 +9,9 @@ from src.server.app_server import AppCommunicationServer
 from src.WebServer.web_server import WebServerDisplay
 from src.server.logger import server_logger
 from src.vision.vision import Vision
-from src.vision.vision import create_3d_map
 
 
 processes = []
-
-
-def play(display_queue, depth_map_enabled):
-    points_3d = None
-    valid_mask = None
-    frame = None
-    frame_count = 0
-    start_time = time.time()
-
-    while True:
-        if display_queue is not None and not display_queue.empty():
-            disp = display_queue.get()
-            if disp is not None:
-                cv2.imshow("Display", disp)
-            else:
-                print("Display frame not found")
-
-            frame_count += 1
-
-            now = time.time()
-            if now - start_time >= 60.0:
-                fps = frame_count / (now - start_time)
-                server_logger.get_logger().info(f"DISPLAY FPS: {fps:.2f}")
-                frame_count = 0
-                start_time = now
-
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            break
-
-        if key == ord('c') and depth_map_enabled:
-            if not [x for x in (points_3d, valid_mask, frame) if x is None]:
-                create_3d_map(points_3d=points_3d, valid_mask=valid_mask, frame=frame)
-            else:
-                server_logger.get_logger().error(
-                    f"Error generating 3D visualization, points_3d: {points_3d}, valid_mask: {valid_mask}")
-
-    cv2.destroyAllWindows()
 
 
 def start_camera_server(vision_queue, camera_server_args):
@@ -113,7 +72,16 @@ def main(camera_server_args, emulator_args, vision_args, object_detected):
     if vision_args.get("enabled"):
         vision_queue = multiprocessing.Queue()
         display_queue = multiprocessing.Queue()
-        info_queue = multiprocessing.Queue()
+        if vision_args.get("depth_map_capture"):
+            info_queue = multiprocessing.Queue()
+
+    ###### Start Visualization Server ######
+    if vision_args.get("depth_map_capture"):
+        server_logger.get_logger().info(f"Starting visualization server on port: 9002")
+        visualization_server_process = multiprocessing.Process(target=start_visualization_process, args=(info_queue,))
+        visualization_server_process.start()
+        server_logger.get_logger().info(f"Started visualization server process with pid: {visualization_server_process.pid}")
+        processes.append(visualization_server_process)
 
     ###### Web Server start process ######
     webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,))
@@ -140,12 +108,6 @@ def main(camera_server_args, emulator_args, vision_args, object_detected):
     server_logger.get_logger().info(f"Started app server process with pid: {app_server_process.pid}")
     processes.append(app_server_process)
 
-    ###### Start Visualization Server ######
-    server_logger.get_logger().info(f"Starting visualization server on port: 9002")
-    visualization_server_process = multiprocessing.Process(target=start_visualization_process, args=(info_queue,))
-    visualization_server_process.start()
-    server_logger.get_logger().info(f"Started visualization server process with pid: {visualization_server_process.pid}")
-    processes.append(visualization_server_process)
 
     ###### Emulator start process ######
     if emulator_args.get("enabled"):
