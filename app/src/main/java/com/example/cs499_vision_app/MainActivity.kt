@@ -17,6 +17,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+
+import android.util.Log
+import android.widget.Button
+import android.widget.TextView
+import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.Socket
+import androidx.core.view.WindowInsetsCompat
+
 import com.example.cs499_vision_app.ui.theme.Cs499_vision_appTheme
 
 class MainActivity : ComponentActivity() {
@@ -69,7 +85,15 @@ fun MainScreen(){
                 Text("Play")
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = {
+                connect(context)
+            }) {
+                Text("Connect")
+            }
         }
+
+
     }
             )
 }
@@ -147,5 +171,23 @@ fun playSound(context: Context){
     Toast.makeText(context, "Playing Sound", Toast.LENGTH_SHORT).show()
 }
 
+fun connect(context: Context){
+    Log.d("Connection attempt", "172.24.24.166 && 12345")
+    CoroutineScope(Dispatchers.Main).launch {
+        val txtFromServer = withContext(Dispatchers.IO) {
+            try{
+            val socket = Socket("172.24.24.166", 12345)
+            val brInput = BufferedReader(InputStreamReader(socket.getInputStream()))
+            val brOutput = PrintWriter(socket.getOutputStream())
 
+            brOutput.write("hello from app\n")
+            brOutput.flush()
+            brInput.readLine()
+        } catch (e:Exception){
+            Log.e("Socket Error", e.toString())
+                "Connection failed"
+
+    }}
+    Toast.makeText(context, "Server message: $txtFromServer", Toast.LENGTH_LONG).show()
+    }}
 
