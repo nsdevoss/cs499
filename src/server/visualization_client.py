@@ -132,7 +132,7 @@ class VisualizationClient:
 
 
 if __name__ == "__main__":
-    server_ip = "10.10.20.130"
+    server_ip = "172.24.70.218"
     server_port = 9002
 
     client = VisualizationClient(server_ip, server_port)

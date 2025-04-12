@@ -3,6 +3,7 @@ import socket
 import cv2
 import struct
 import time
+import platform
 import numpy as np
 import src.LocalCommon as lc
 from turbojpeg import TurboJPEG
@@ -27,7 +28,11 @@ class StreamCameraServer(SocketServer):
         self.fps = fps
         self.frame_interval = 1.0 / fps
         self.shutdown = False
-        self.jpeg = TurboJPEG("C:/libjpeg-turbo-gcc64/bin/libturbojpeg.dll")
+        system = platform.system()
+        if system == "Windows":
+            self.jpeg = TurboJPEG("C:/libjpeg-turbo-gcc64/bin/libturbojpeg.dll")
+        else:
+            self.jpeg = TurboJPEG()
         super().__init__(host, port, socket_type)
 
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1048576)

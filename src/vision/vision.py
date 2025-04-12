@@ -89,6 +89,7 @@ class Vision:
             visualization_time = time.time()
             while True:
                 try:
+                    start_time = time.time()
                     frame = self.frame_queue.get()
                     display_frame = None
                     if frame is not None:
@@ -166,6 +167,8 @@ class Vision:
 
                         if self.display_queue is not None:
                             self.display_queue.put(display_frame)
+                        now = time.time()
+                        print(f"Vision process time: {(now - start_time) * 1000:.2f}ms")
 
                         end_time = time.time()
                         if end_time - contour_refresh_map >= 10.0:
@@ -271,7 +274,6 @@ class Vision:
                     contour_map = cv2.circle(contour_map, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
                     if not np.isnan(distance_map[Cy, Cx]):
                         center_distance = distance_map[Cy, Cx]
-                        detector.get_detection((Cx, Cy), center_distance)
                     else:
                         center_distance = None
                 

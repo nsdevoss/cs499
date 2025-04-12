@@ -1,9 +1,9 @@
 {
   "emulator_arguments": {
     "enabled": true,
-    "stream_enabled": false,
-    "video_name": "flag1",
-    "encode_quality": 100
+    "stream_enabled": true,
+    "video_name": "shovel",
+    "encode_quality": 70
   },
   "camera_server_arguments": {
     "port": 9000,

@@ -5,6 +5,7 @@ import struct
 import ipaddress
 import time
 import concurrent.futures
+import platform
 import src.LocalCommon as lc
 from src.utils import utils
 from src.server.logger import client_logger
@@ -34,7 +35,11 @@ class Emulator:
         self.shutdown = False
         self.socket_type = socket_type
         self.scale = scale
-        self.jpeg = TurboJPEG("C:/libjpeg-turbo-gcc64/bin/libturbojpeg.dll")
+        system = platform.system()
+        if system == "Windows":
+            self.jpeg = TurboJPEG("C:/libjpeg-turbo-gcc64/bin/libturbojpeg.dll")
+        else:
+            self.jpeg = TurboJPEG()
         self.encode_quality = encode_quality
         try:
             assert self.socket_type == "TCP" or self.socket_type == "UDP", f'Socket type must be "TCP" or "UDP", got: {self.socket_type}'
