@@ -15,7 +15,9 @@ class VisualizationClient:
         self.server_port = server_port
         self.client_socket = None
         self.visualizer = None
-        self.point_cloud = [[1,1,1], [1,1,1], [1,1,1]]  # This is just a dummy value
+        self.point_cloud = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]  # This is just a dummy value
+        self.voxel_size = 0.015
+        self.voxel_grid = None
         self.setup_visualization()
 
     def setup_visualization(self):
@@ -88,6 +90,19 @@ class VisualizationClient:
             valid_points[:, 2] = -valid_points[:, 2]
             valid_points[:, 1] = -valid_points[:, 1]
 
+            if len(valid_points) > 0:
+                depth_threshold = np.percentile(np.abs(valid_points[:, 2]), 90)
+                depth_mask = np.abs(valid_points[:, 2]) < depth_threshold
+                valid_points = valid_points[depth_mask]
+                valid_colors = valid_colors[depth_mask]
+
+            if len(valid_points) > 0:
+                min_z = np.min(valid_points[:, 2])
+                if min_z <= 0:
+                    valid_points[:, 2] = valid_points[:, 2] - min_z + 0.1
+
+                valid_points[:, 2] = (valid_points[:, 2] - np.min(valid_points[:, 2])) / (np.max(valid_points[:, 2]) - np.min(valid_points[:, 2]))
+
             self.point_cloud.points = o3d.utility.Vector3dVector(valid_points)
             self.point_cloud.colors = o3d.utility.Vector3dVector(valid_colors)
 
@@ -97,7 +112,16 @@ class VisualizationClient:
             self.point_cloud.points = filtered_cloud.points
             self.point_cloud.colors = filtered_cloud.colors
 
-            self.visualizer.reset_view_point(True)
+            voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(self.point_cloud, self.voxel_size)
+
+            if self.voxel_grid is None:
+                self.voxel_grid = voxel_grid
+                self.visualizer.add_geometry(self.voxel_grid)
+                self.visualizer.remove_geometry(self.point_cloud)
+            else:
+                self.visualizer.remove_geometry(self.voxel_grid)
+                self.voxel_grid = voxel_grid
+                self.visualizer.add_geometry(self.voxel_grid)
 
             view_control = self.visualizer.get_view_control()
 
@@ -132,7 +156,7 @@ class VisualizationClient:
 
 
 if __name__ == "__main__":
-    server_ip = "172.24.70.218"
+    server_ip = "192.168.1.161"
     server_port = 9002
 
     client = VisualizationClient(server_ip, server_port)

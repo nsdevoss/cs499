@@ -96,10 +96,7 @@ class StreamCameraServer(SocketServer):
                     log_writer.warning("Received an empty or corrupted frame.")
                     continue
 
-                # This is where our FPS comes from
                 frame_count += 1
-                if frame_count % frame_rate != 0:
-                    continue
 
                 if self.vision_queue is not None:
                     self.vision_queue.put(frame)

@@ -3,6 +3,7 @@ import os
 import zipfile
 import socket
 import platform
+import paramiko
 import tkinter as tk
 from src.server.logger import server_logger, client_logger
 
@@ -115,3 +116,41 @@ def split_frame(frame):
         right_frame = frame[:, half_width:, :]
 
     return left_frame, right_frame
+
+
+#############################  SSH For the Raspberry PI #####################################
+
+def execute_pi_client(pi_arguments, server_ip, server_port, socket_type, scale):
+    hostname = pi_arguments.get("hostname")
+    port = pi_arguments.get("port")
+    username = pi_arguments.get("username")
+    password = pi_arguments.get("password")
+    fps = pi_arguments.get("fps")
+
+    encode_quality = pi_arguments.get("encode_quality")
+
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        client.connect(hostname, port=port, username=username, password=password)
+
+        commands = f"""
+        cd Desktop
+        pwd
+        source .venv/bin/activate
+        python camera_client.py --server_ip {server_ip} --server_port {server_port} --socket_type {socket_type} --encode_quality {encode_quality} --scale {scale} --fps {fps}
+        """
+        stdin, stdout, stderr = client.exec_command(commands)
+        output = stdout.read().decode()
+        errors = stderr.read().decode()
+
+        print("Output:", output)
+        if errors:
+            print(f"Errors: {errors}")
+    finally:
+        client.close()
+
+
+if __name__ == "__main__":
+    execute_pi_client("192.168.1.159", 22, "uab.edu", "pi")

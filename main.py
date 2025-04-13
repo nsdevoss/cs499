@@ -3,6 +3,7 @@ from src.pi import emulator
 from src.utils import utils
 from datetime import datetime
 from src.utils.config import Config
+from src.utils.utils import execute_pi_client
 from src.server.camera_server import StreamCameraServer
 from src.server.visualization_server import VisualizationServer
 from src.server.app_server import AppCommunicationServer
@@ -37,8 +38,8 @@ def start_emulator(ip_addr, emulator_args, camera_server_args):
     stream_enabled = emulator_args.get("stream_enabled")
     encode_quality = emulator_args.get("encode_quality")
     port = camera_server_args.get("port")
-    socket_type = camera_server_args.get("socket_type")
     scale = camera_server_args.get("scale")
+    socket_type = camera_server_args.get("socket_type")
 
     client = emulator.Emulator(server_ip=ip_addr, video=video, stream_enabled=stream_enabled, server_port=port, socket_type=socket_type, encode_quality=encode_quality, scale=scale)
     if stream_enabled:
@@ -56,7 +57,7 @@ def start_visualization_process(info_queue):
     visualization_server.connect()
 
 
-def main(camera_server_args, emulator_args, vision_args, object_detected):
+def main(camera_server_args, pi_args, emulator_args, vision_args, object_detected):
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -119,6 +120,21 @@ def main(camera_server_args, emulator_args, vision_args, object_detected):
         server_logger.get_logger().info(f"Started emulator process with pid: {emu_process.pid}")
         processes.append(emu_process)
 
+    else:
+        pi_client_process = multiprocessing.Process(
+            target=execute_pi_client,
+            args=(
+                pi_arguments,
+                ip_addr,
+                camera_server_args.get("port"),
+                camera_server_args.get("socket_type"),
+                camera_server_args.get("scale"),
+            )
+        )
+        pi_client_process.start()
+        server_logger.get_logger().info(f"Started Pi client process with pid: {pi_client_process.pid}")
+        processes.append(pi_client_process)
+
     ###### Create kill button ######
     utils.create_killer(start_time=start_time, processes=processes, logs=logs_to_zip)
 
@@ -131,8 +147,9 @@ if __name__ == "__main__":
 
     camera_server_args = Config.get("camera_server_arguments")
     emulator_args = Config.get("emulator_arguments")
+    pi_arguments = Config.get("pi_arguments")
     vision_args = Config.get("vision_arguments")
 
     object_detected = multiprocessing.Value('b', False)
 
-    main(camera_server_args, emulator_args, vision_args, object_detected)
+    main(camera_server_args, pi_arguments, emulator_args, vision_args, object_detected)

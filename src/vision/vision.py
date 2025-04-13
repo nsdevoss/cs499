@@ -89,7 +89,6 @@ class Vision:
             visualization_time = time.time()
             while True:
                 try:
-                    start_time = time.time()
                     frame = self.frame_queue.get()
                     display_frame = None
                     if frame is not None:
@@ -167,8 +166,6 @@ class Vision:
 
                         if self.display_queue is not None:
                             self.display_queue.put(display_frame)
-                        now = time.time()
-                        print(f"Vision process time: {(now - start_time) * 1000:.2f}ms")
 
                         end_time = time.time()
                         if end_time - contour_refresh_map >= 10.0:
