@@ -31,29 +31,109 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
+import kotlinx.coroutines.CompletableDeferred
 import androidx.core.view.WindowInsetsCompat
+
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
+
+import com.example.cs499_vision_app.R
 
 import com.example.cs499_vision_app.ui.theme.Cs499_vision_appTheme
 
 class MainActivity : ComponentActivity() {
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
 
-            MainScreen()
+            val customColorScheme = lightColorScheme(
+                primary = Color(0xFF62AB37),        //earthy green
+                onPrimary = Color.White,
+                secondary = Color(0xFF345511),      //deep forest green
+                onSecondary = Color.White,
+                background = Color(0xFFEADACB),     //soft rosy beige
+                onBackground = Color(0xFF393424),   // Complementary (for text on background)
+                surface = Color.White,
+                onSurface = Color(0xFF393424)       // Also using complementary for contrast
+
+            )
+
+            val Quicksand = FontFamily(
+                Font(R.font.quicksand_regular, FontWeight.Normal),
+                Font(R.font.quicksand_bold, FontWeight.Bold)
+            )
+
+            val CustomTypography = Typography(
+                bodyLarge = TextStyle(
+                    fontFamily = Quicksand,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 16.sp
+                ),
+                bodyMedium = TextStyle(
+                    fontFamily = Quicksand,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 14.sp
+                ),
+                titleLarge = TextStyle(
+                    fontFamily = Quicksand,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp
+                ),
+                headlineMedium = TextStyle(
+                    fontFamily = Quicksand,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp
+                )
+            )
+
+            MaterialTheme(colorScheme = customColorScheme,
+            typography = CustomTypography
+            )
+            {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                    contentColor = MaterialTheme.colorScheme.onBackground
+                )
+                {
+
+                    MainScreen()
+                }
+            }
 
         }
     }
 }
+
+private lateinit var socket: Socket
+private lateinit var brInput: BufferedReader
+private lateinit var brOutput: PrintWriter
+private val connectionReady = CompletableDeferred<Unit>()
+
+
 // Main screen settings
 @Composable
 fun MainScreen(){
     // automatically select just vibrate
     var selectedOption by remember {mutableStateOf("Vibrate")}
-
+    var serverMessage by remember { mutableStateOf("no message yet")}
     val context = LocalContext.current
 
     Scaffold(
+        topBar = { AppHeader()},
     content = {
         innerPadding ->
         Column(
@@ -65,6 +145,8 @@ fun MainScreen(){
             horizontalAlignment = Alignment.CenterHorizontally
 
         ) {
+
+
 
             SelectionMenu(selectedOption) {selectedOption = it}
 
@@ -87,10 +169,14 @@ fun MainScreen(){
 
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = {
-                connect(context)
+                connect(context){
+                    msg->serverMessage =msg
+                }
             }) {
                 Text("Connect")
             }
+            Spacer(modifier = Modifier.height(32.dp))
+            Text("Server message: $serverMessage")
         }
 
 
@@ -98,8 +184,29 @@ fun MainScreen(){
             )
 }
 
+@Composable
+fun AppHeader(){
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ){
+        Text(text="Oculosarus",
+            style =MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.secondary)
 
-// making a radiobutton option for sound and vibration prefernece
+        Image(
+            painter = painterResource(id=R.drawable.oculosarus_logo),
+            contentDescription = "Oculosarus Logo",
+            modifier = Modifier
+                .size(100.dp)
+        )
+    }
+}
+
+// making a radiobutton option for sound and vibration preference
 //https://developer.android.com/develop/ui/compose/components/radio-button
 @Composable
 fun SelectionMenu(selectedOption: String, onOptionSelected: (String) -> Unit) {
@@ -166,28 +273,50 @@ fun triggerVibration(context: Context) {
 }
 
 fun playSound(context: Context){
+    // sound file located in app/src/main/res/raw/
     val mediaPlayer = MediaPlayer.create(context, R.raw.mixkit_magic_marimba_2820) // sound file https://mixkit.co/free-sound-effects/notification/
     mediaPlayer.start()
     Toast.makeText(context, "Playing Sound", Toast.LENGTH_SHORT).show()
 }
 
-fun connect(context: Context){
+fun connect(context: Context,
+            onMessageReceived:(String) -> Unit
+
+) {
     Log.d("Connection attempt", "172.24.24.166 && 12345")
     CoroutineScope(Dispatchers.Main).launch {
         val txtFromServer = withContext(Dispatchers.IO) {
-            try{
-            val socket = Socket("172.24.24.166", 12345)
-            val brInput = BufferedReader(InputStreamReader(socket.getInputStream()))
-            val brOutput = PrintWriter(socket.getOutputStream())
+
+            socket = Socket("172.24.24.166", 12345)
+            brInput = BufferedReader(InputStreamReader(socket.getInputStream()))
+            brOutput = PrintWriter(socket.getOutputStream())
 
             brOutput.write("hello from app\n")
             brOutput.flush()
             brInput.readLine()
-        } catch (e:Exception){
-            Log.e("Socket Error", e.toString())
-                "Connection failed"
 
-    }}
-    Toast.makeText(context, "Server message: $txtFromServer", Toast.LENGTH_LONG).show()
-    }}
+        }
+        connectionReady.complete(Unit)
+        Toast.makeText(context, "Server message: $txtFromServer", Toast.LENGTH_LONG).show()
+        onMessageReceived(txtFromServer)
 
+        readMessagesInBackground(onMessageReceived)
+    }
+}
+
+fun readMessagesInBackground(onMessageReceived: (String) -> Unit) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            connectionReady.await()
+            while(true) {
+                val msg = brInput.readLine() ?: break
+                Log.d("Server Message" , msg)
+                withContext(Dispatchers.Main) {
+                    onMessageReceived(msg)
+                }
+            }
+        }catch (e:Exception) {
+            Log.e("Read Error", e.message ?: "Unknown Error")
+        }
+    }
+}
