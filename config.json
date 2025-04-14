@@ -1,6 +1,6 @@
 {
   "emulator_arguments": {
-    "enabled": false,
+    "enabled": true,
     "stream_enabled": false,
     "video_name": "shovel",
     "encode_quality": 70
@@ -24,6 +24,7 @@
     "enabled": true,
     "depth_map_capture": true,
     "refresh_rate": 5,
+    "object_persistence_threshold": 60,
     "calibration_file": "calib_50/calibration_50.npz",
     "StereoSGBM_args": {
       "minDisparity": 0,
@@ -35,7 +36,7 @@
       "disp12MaxDiff": 1
     },
     "distance_args": {
-      "max_dist": 0.5,
+      "max_dist": 0.7,
       "min_dist": 0,
       "color": [12,237,16],
       "alpha": 0.5,

@@ -22,10 +22,10 @@ class StreamCameraServer(SocketServer):
     :param port: The port we are opening up on this instance. Default doesn't mean anything since we handle all of this in main.py, I'm just too lazy to change the argument order
     :param frame_queue: This passes the frame queue (more on this in main.py and below)
     """
-    def __init__(self, host="0.0.0.0", port=9000, socket_type="TCP", vision_queue=None, display=True, fps=60):
+    def __init__(self, host="0.0.0.0", port=9000, socket_type="TCP", vision_queue=None, emulator_enabled=False, fps=60):
         self.vision_queue = vision_queue
-        self.display = display
         self.fps = fps
+        self.emulator_enabled = emulator_enabled
         self.frame_interval = 1.0 / fps
         self.shutdown = False
         system = platform.system()
@@ -97,6 +97,8 @@ class StreamCameraServer(SocketServer):
                     continue
 
                 frame_count += 1
+                if self.emulator_enabled and frame_count % frame_rate != 0:
+                    continue
 
                 if self.vision_queue is not None:
                     self.vision_queue.put(frame)
@@ -220,7 +222,7 @@ class StreamCameraServer(SocketServer):
                                 continue
 
                             frame_count += 1
-                            if frame_count % frame_rate != 0:
+                            if self.emulator_enabled and frame_count % frame_rate != 0:
                                 fragments[client_key] = {}
                                 continue
 

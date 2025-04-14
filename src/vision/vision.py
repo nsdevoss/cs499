@@ -18,7 +18,7 @@ class Vision:
     :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, display_queue, info_queue, object_detect_queue, vision_args, scale, object_detected):
+    def __init__(self, frame_queue, display_queue, info_queue, object_detect_queue, vision_args, scale):
         self.frame_queue = frame_queue
         self.display_queue = display_queue
         self.info_queue = info_queue
@@ -41,11 +41,11 @@ class Vision:
         self.highlight_color = tuple(int(c) for c in self.vision_args.get("distance_args").get("color"))
         self.highlight_alpha = self.vision_args.get("distance_args").get("alpha")
         self.highlight_min_area = self.vision_args.get("distance_args").get("min_area")
-        
-        self.object_detected = object_detected
+
         self.object_detect_queue = object_detect_queue
         self.object_queue = deque(maxlen=50)
         self.previous_objects = []
+        self.object_persistence_threshold = self.vision_args.get("object_persistence_threshold")
 
     def start(self):
         if self.vision_args.get("enabled"):
@@ -131,7 +131,6 @@ class Vision:
                         highlighted_frame, contour_centers, contour_map, object_in_frame = self.highlight_distance_range(left,
                                                                                                         distance_map,
                                                                                                         contour_map)
-                        self.object_detected.value = object_in_frame
                             
                         disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_INFERNO)
 
@@ -286,7 +285,7 @@ class Vision:
                         current_objects.append({
                             'center': (Cx, Cy),
                             'bbox': (x, y, w, h),
-                            'distance': object_distance,
+                            'distance': float(object_distance),
                             'area': area,
                             'contour': contour
                         })
@@ -311,7 +310,6 @@ class Vision:
             if not matched:
                 current_obj['persistence'] = 1
 
-        #
         stable_objects = [obj for obj in current_objects if obj.get('persistence', 0) >= 2]
 
         for obj in stable_objects:
@@ -321,12 +319,14 @@ class Vision:
 
             object_info = {
                 'center': (cx, cy),
-                'distance': distance
+                'distance': distance,
+                'bbox': (x, y, w, h),
+                'persistence': obj.get('persistence')
             }
 
             self.object_queue.append(object_info)
 
-            if self.object_detect_queue is not None and obj.get('persistence', 0) >= 120:
+            if self.object_detect_queue is not None and obj.get('persistence', 0) >= self.object_persistence_threshold:
                 try:
                     self.object_detect_queue.put_nowait(object_info)
                 except queue.Full:

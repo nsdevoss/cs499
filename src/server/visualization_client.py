@@ -6,7 +6,6 @@ import select
 import numpy as np
 import open3d as o3d
 
-
 ############## This needs to be run as a singular file, it is not part of the program ######################
 
 class VisualizationClient:
@@ -16,8 +15,7 @@ class VisualizationClient:
         self.client_socket = None
         self.visualizer = None
         self.point_cloud = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]  # This is just a dummy value
-        self.voxel_size = 0.01
-        self.voxel_grid = None
+        self.point_cloud_added = False
         self.setup_visualization()
 
     def setup_visualization(self):
@@ -112,22 +110,15 @@ class VisualizationClient:
             self.point_cloud.points = filtered_cloud.points
             self.point_cloud.colors = filtered_cloud.colors
 
-            voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(self.point_cloud, self.voxel_size)
+            if not self.point_cloud_added:
+                self.visualizer.add_geometry(self.point_cloud)
+                self.point_cloud_added = True
 
-            if self.voxel_grid is None:
-                self.voxel_grid = voxel_grid
-                self.visualizer.add_geometry(self.voxel_grid)
-                self.visualizer.remove_geometry(self.point_cloud)
-            else:
-                self.visualizer.remove_geometry(self.voxel_grid)
-                self.voxel_grid = voxel_grid
-                self.visualizer.add_geometry(self.voxel_grid)
+            self.visualizer.update_geometry(self.point_cloud)
 
             view_control = self.visualizer.get_view_control()
 
             view_control.set_zoom(0.35)
-
-            self.visualizer.update_geometry(self.point_cloud)
 
         except Exception as e:
             print(f"Error updating visualization: {e}")

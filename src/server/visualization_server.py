@@ -37,8 +37,8 @@ class VisualizationServer(SocketServer):
                 conn.sendall(serialized)
                 self.log_writer.info(f"Sent message to {addr}")
 
+        except (ConnectionResetError, BrokenPipeError) as e:
+            self.log_writer.error(f"{e}, Visualization Client disconnected, Waiting for a new connection...")
         except Exception as e:
             self.log_writer.error(f"Error sending data to client: {e}")
-            import traceback
-            self.log_writer.error(traceback.format_exc())
             raise

@@ -15,18 +15,18 @@ from src.vision.vision import Vision
 processes = []
 
 
-def start_camera_server(vision_queue, camera_server_args):
+def start_camera_server(vision_queue, camera_server_args, emulator_enabled):
     host = camera_server_args.get("host")
     port = camera_server_args.get("port")
     socket_type = camera_server_args.get("socket_type")
     fps = camera_server_args.get("fps")
 
-    local_server = StreamCameraServer(host=host, port=port, socket_type=socket_type, vision_queue=vision_queue, fps=fps)
+    local_server = StreamCameraServer(host=host, port=port, socket_type=socket_type, vision_queue=vision_queue, emulator_enabled=emulator_enabled,fps=fps)
     local_server.receive_video_stream()
 
 
-def start_app_server(object_detected):
-    app_server = AppCommunicationServer(object_detected)
+def start_app_server(object_detect_queue):
+    app_server = AppCommunicationServer(object_detect_queue)
     app_server.connect_to_app()
 
 def start_webserver(display_queue):
@@ -48,8 +48,8 @@ def start_emulator(ip_addr, emulator_args, camera_server_args):
         client.send_video()
 
 
-def start_vision_process(vision_queue, display_queue, object_detect_queue, info_queue, vision_args, scale, object_detected):
-    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, info_queue=info_queue, object_detect_queue=object_detect_queue,vision_args=vision_args, scale=scale, object_detected=object_detected)
+def start_vision_process(vision_queue, display_queue, object_detect_queue, info_queue, vision_args, scale):
+    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, info_queue=info_queue, object_detect_queue=object_detect_queue,vision_args=vision_args, scale=scale)
     vision.start()
 
 def start_visualization_process(info_queue):
@@ -57,7 +57,7 @@ def start_visualization_process(info_queue):
     visualization_server.connect()
 
 
-def main(camera_server_args, pi_args, emulator_args, vision_args, object_detected):
+def main(camera_server_args, pi_args, emulator_args, vision_args):
     global processes, ip_addr
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -92,21 +92,21 @@ def main(camera_server_args, pi_args, emulator_args, vision_args, object_detecte
     processes.append(webserver_process)
 
     ###### Vision start process ######
-    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, object_detect_queue, info_queue,vision_args, camera_server_args.get("scale"), object_detected))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, object_detect_queue, info_queue,vision_args, camera_server_args.get("scale")))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)
 
     ###### Camera Server start process ######
     server_logger.get_logger().info(f"Starting server on port: {camera_server_args.get('port')}")
-    camera_server_process = multiprocessing.Process(target=start_camera_server,args=(vision_queue, camera_server_args), name=f"Server Process: {camera_server_args.get('port')}")
+    camera_server_process = multiprocessing.Process(target=start_camera_server,args=(vision_queue, camera_server_args, emulator_args.get("enabled")), name=f"Server Process: {camera_server_args.get('port')}")
     camera_server_process.start()
     server_logger.get_logger().info(f"Started server process with pid: {camera_server_process.pid}")
     processes.append(camera_server_process)
 
     ###### App Server start process ######
     server_logger.get_logger().info(f"Starting app server on port: 9001")
-    app_server_process = multiprocessing.Process(target=start_app_server, args=(object_detected,))
+    app_server_process = multiprocessing.Process(target=start_app_server, args=(object_detect_queue,))
     app_server_process.start()
     server_logger.get_logger().info(f"Started app server process with pid: {app_server_process.pid}")
     processes.append(app_server_process)
@@ -152,6 +152,4 @@ if __name__ == "__main__":
     pi_arguments = Config.get("pi_arguments")
     vision_args = Config.get("vision_arguments")
 
-    object_detected = multiprocessing.Value('b', False)
-
-    main(camera_server_args, pi_arguments, emulator_args, vision_args, object_detected)
+    main(camera_server_args, pi_arguments, emulator_args, vision_args)

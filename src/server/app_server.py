@@ -1,3 +1,5 @@
+import json
+import time
 from src.server.logger import server_logger
 from src.server.server import SocketServer
 
@@ -12,10 +14,10 @@ class AppCommunicationServer(SocketServer):
     Tips:
         You can choose whether it is better for TCP or UDP for connecting to the app, but it will most likely be TCP.
     """
-    def __init__(self, object_detected, host="0.0.0.0", port=9001, socket_type="TCP"):
+    def __init__(self, object_detect_queue, host="0.0.0.0", port=9001, socket_type="TCP"):
         super().__init__(host, port, socket_type)
         self.log_writer = server_logger.get_logger()
-        self.object_detected = object_detected
+        self.object_detect_queue = object_detect_queue
 
     def connect_to_app(self):
         while True:
@@ -31,17 +33,15 @@ class AppCommunicationServer(SocketServer):
             self.log_writer.info(f"Sent initial message: {init_msg}")
             
             while True:
-                if self.object_detected.value:
-                    msg = f"Detected object\n"
-                    self.log_writer.info(f"Sending message: {msg}")
+                if self.object_detect_queue is not None and not self.object_detect_queue.empty():
+                    entry = self.object_detect_queue.get()
+                    # json_entry = json.dumps(str(entry))
+                    msg = f"There is an object with distance: {entry.get('distance'):.2f}m, persistence: {entry.get('persistence')}, center: {entry.get('center')}\n"
                     conn.send(msg.encode())
-                    self.log_writer.info(f"Sent message: {msg} to {addr}")
-                else:
-                    msg = f"No detected object\n"
-                    self.log_writer.info(f"Sending message: {msg}")
-                    conn.send(msg.encode())
-                    self.log_writer.info(f"Sent message: {msg} to {addr}")
+                    self.log_writer.info(f"Sent message {msg} to {addr}")
 
+        except (ConnectionResetError, BrokenPipeError) as e:
+            server_logger.get_logger().info(f"{e}, APP CLIENT disconnected, Waiting for a new connection...")
         except Exception as e:
             conn.close()
             self.log_writer.error(f"Error sending message: {e}")
