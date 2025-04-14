@@ -48,8 +48,8 @@ def start_emulator(ip_addr, emulator_args, camera_server_args):
         client.send_video()
 
 
-def start_vision_process(vision_queue, display_queue, info_queue, vision_args, scale, object_detected):
-    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, info_queue=info_queue, vision_args=vision_args, scale=scale, object_detected=object_detected)
+def start_vision_process(vision_queue, display_queue, object_detect_queue, info_queue, vision_args, scale, object_detected):
+    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, info_queue=info_queue, object_detect_queue=object_detect_queue,vision_args=vision_args, scale=scale, object_detected=object_detected)
     vision.start()
 
 def start_visualization_process(info_queue):
@@ -69,10 +69,12 @@ def main(camera_server_args, pi_args, emulator_args, vision_args, object_detecte
     display_queue = None  # Use for play process for debug now, SHOULD be used by the Webserver on release
     vision_queue = None  # Use for Vision class
     info_queue = None  # This is for the other computer to use
+    object_detect_queue = None
 
     if vision_args.get("enabled"):
         vision_queue = multiprocessing.Queue()
         display_queue = multiprocessing.Queue()
+        object_detect_queue = multiprocessing.Queue()
         if vision_args.get("depth_map_capture"):
             info_queue = multiprocessing.Queue()
 
@@ -90,7 +92,7 @@ def main(camera_server_args, pi_args, emulator_args, vision_args, object_detecte
     processes.append(webserver_process)
 
     ###### Vision start process ######
-    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, info_queue, vision_args, camera_server_args.get("scale"), object_detected))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, object_detect_queue, info_queue,vision_args, camera_server_args.get("scale"), object_detected))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)
@@ -124,7 +126,7 @@ def main(camera_server_args, pi_args, emulator_args, vision_args, object_detecte
         pi_client_process = multiprocessing.Process(
             target=execute_pi_client,
             args=(
-                pi_arguments,
+                pi_args,
                 ip_addr,
                 camera_server_args.get("port"),
                 camera_server_args.get("socket_type"),

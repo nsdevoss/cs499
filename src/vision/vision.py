@@ -5,6 +5,7 @@ import os
 import numpy as np
 import src.LocalCommon as lc
 from src.server.logger import server_logger
+from collections import deque
 
 
 class Vision:
@@ -17,7 +18,7 @@ class Vision:
     :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, display_queue, info_queue, vision_args, scale, object_detected):
+    def __init__(self, frame_queue, display_queue, info_queue, object_detect_queue, vision_args, scale, object_detected):
         self.frame_queue = frame_queue
         self.display_queue = display_queue
         self.info_queue = info_queue
@@ -42,6 +43,9 @@ class Vision:
         self.highlight_min_area = self.vision_args.get("distance_args").get("min_area")
         
         self.object_detected = object_detected
+        self.object_detect_queue = object_detect_queue
+        self.object_queue = deque(maxlen=50)
+        self.previous_objects = []
 
     def start(self):
         if self.vision_args.get("enabled"):
@@ -158,11 +162,11 @@ class Vision:
 
                         # Third row (bottom) - original frames
                         bottom_y_offset = middle_y_offset + highlighted_frame.shape[0]
-                        display_frame[bottom_y_offset:bottom_y_offset + left_frame.shape[0],
-                        :left_frame.shape[1]] = left_frame  # Bottom-left (original left frame)
-                        display_frame[bottom_y_offset:bottom_y_offset + right_frame.shape[0],
-                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + right_frame.shape[
-                            1]] = right_frame  # Bottom-right (original right frame)
+                        display_frame[bottom_y_offset:bottom_y_offset + left.shape[0],
+                        :left.shape[1]] = left  # Bottom-left (original left frame)
+                        display_frame[bottom_y_offset:bottom_y_offset + right.shape[0],
+                        highlighted_frame.shape[1]:highlighted_frame.shape[1] + right.shape[
+                            1]] = right  # Bottom-right (original right frame)
 
                         if self.display_queue is not None:
                             self.display_queue.put(display_frame)
@@ -240,12 +244,15 @@ class Vision:
         :return: A visual frame with the green color on it of where the close section is
         """
         valid_pixels = ~np.isnan(distance_map)  # Here we make sure they are all valid
+        kernel = np.ones((5, 5), np.uint8)
 
         range_mask = np.zeros_like(distance_map,
                                    dtype=np.uint8)  # We create an empty matrix with the same size and stuff as the map
         in_range = (distance_map >= self.highlight_min_dist) & (distance_map <= self.highlight_max_dist) & valid_pixels
         range_mask[
-            in_range] = 1  # We populate each value that meets the criteria of our distance with 1 so we know what is in range
+            in_range] = 255
+        range_mask = cv2.morphologyEx(range_mask, cv2.MORPH_CLOSE, kernel)
+        range_mask = cv2.morphologyEx(range_mask, cv2.MORPH_OPEN, kernel)
 
         # We find contours to filter out what we highlight, contours basically act as a filter as it makes areas of congested regions
         contours, _ = cv2.findContours(range_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -254,35 +261,91 @@ class Vision:
             frame)  # This is what we will display, we create a new matrix the same size as the orig frame
         contour_centers = np.zeros_like(frame)
         object_found = False
+        current_objects = []
+        frame_with_boxes = frame.copy()
         for contour in contours:
-            if cv2.contourArea(
-                    contour) >= self.highlight_min_area:  # If the contour is big enough to be considered valid
-                epsilon = 0.02 * cv2.arcLength(contour, True)
-                approx_contour = cv2.approxPolyDP(contour, epsilon, True)
-
-                cv2.drawContours(highlight_mask, [approx_contour], -1, self.highlight_color, 2)
-                cv2.fillPoly(highlight_mask, [contour], self.highlight_color)
+            area = cv2.contourArea(contour)
+            if area >= self.highlight_min_area:  # If the contour is big enough to be considered valid
+                x, y, w, h = cv2.boundingRect(contour)
                 moments = cv2.moments(contour)
                 if moments['m00'] != 0:
                     Cx = int(moments['m10'] / moments['m00'])
                     Cy = int(moments['m01'] / moments['m00'])
-                    object_found = True
-                    contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
-                    contour_map = cv2.circle(contour_map, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
-                    if not np.isnan(distance_map[Cy, Cx]):
-                        center_distance = distance_map[Cy, Cx]
-                    else:
-                        center_distance = None
-                
+
+                    region_size = 5
+                    region_x_start = max(0, Cx - region_size)
+                    region_x_end = min(distance_map.shape[1] - 1, Cx + region_size)
+                    region_y_start = max(0, Cy - region_size)
+                    region_y_end = min(distance_map.shape[0] - 1, Cy + region_size)
+                    region = distance_map[region_y_start:region_y_end, region_x_start:region_x_end]
+                    valid_region = region[~np.isnan(region)]
+
+                    if len(valid_region) > 0:
+                        object_distance = np.median(valid_region)
+
+                        current_objects.append({
+                            'center': (Cx, Cy),
+                            'bbox': (x, y, w, h),
+                            'distance': object_distance,
+                            'area': area,
+                            'contour': contour
+                        })
+
+                        object_found = True
+                        contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
+                        contour_map = cv2.circle(contour_map, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
+
+                cv2.drawContours(highlight_mask, [contour], -1, 255, -1)
+
+        # Match with previous objects
+        for current_obj in current_objects:
+            cx, cy = current_obj['center']
+            matched = False
+            for prev_obj in self.previous_objects:
+                px, py = prev_obj['center']
+                dist = np.sqrt((cx - px) ** 2 + (cy - py) ** 2)
+                if dist < 50:
+                    current_obj['persistence'] = prev_obj.get('persistence', 0) + 1
+                    matched = True
+                    break
+            if not matched:
+                current_obj['persistence'] = 1
+
+        #
+        stable_objects = [obj for obj in current_objects if obj.get('persistence', 0) >= 2]
+
+        for obj in stable_objects:
+            x, y, w, h = obj['bbox']
+            cx, cy = obj['center']
+            distance = obj['distance']
+
+            object_info = {
+                'center': (cx, cy),
+                'distance': distance
+            }
+
+            self.object_queue.append(object_info)
+
+            if self.object_detect_queue is not None and obj.get('persistence', 0) >= 120:
+                try:
+                    self.object_detect_queue.put_nowait(object_info)
+                except queue.Full:
+                    server_logger.get_logger().warning("object_detect_queue is full. Dropping object.")
+
+            cv2.rectangle(frame_with_boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.putText(frame_with_boxes, f"{distance:.2f}m", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.drawContours(frame_with_boxes, [obj['contour']], -1, (0, 255, 0), 1)
+
         highlight[highlight_mask > 0] = self.highlight_color
 
         highlight = cv2.GaussianBlur(highlight, (5, 5), 0)  # Smoothing
 
         # We blend the overlays with the frame
-        blended_frame = cv2.addWeighted(highlight, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)
+        blended_frame = cv2.addWeighted(highlight, self.highlight_alpha, frame_with_boxes, 1 - self.highlight_alpha, 0)
         blended_contour_centers = cv2.addWeighted(contour_centers, self.highlight_alpha, frame,
                                                   1 - self.highlight_alpha, 0)
 
+        self.previous_objects = current_objects
         return blended_frame, blended_contour_centers, contour_map, object_found
 
     def disparity_to_distance(self, disparity):

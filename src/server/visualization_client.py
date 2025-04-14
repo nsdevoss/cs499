@@ -16,7 +16,7 @@ class VisualizationClient:
         self.client_socket = None
         self.visualizer = None
         self.point_cloud = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]  # This is just a dummy value
-        self.voxel_size = 0.015
+        self.voxel_size = 0.01
         self.voxel_grid = None
         self.setup_visualization()
 
@@ -91,7 +91,7 @@ class VisualizationClient:
             valid_points[:, 1] = -valid_points[:, 1]
 
             if len(valid_points) > 0:
-                depth_threshold = np.percentile(np.abs(valid_points[:, 2]), 90)
+                depth_threshold = np.percentile(np.abs(valid_points[:, 2]), 95)
                 depth_mask = np.abs(valid_points[:, 2]) < depth_threshold
                 valid_points = valid_points[depth_mask]
                 valid_colors = valid_colors[depth_mask]
@@ -106,7 +106,7 @@ class VisualizationClient:
             self.point_cloud.points = o3d.utility.Vector3dVector(valid_points)
             self.point_cloud.colors = o3d.utility.Vector3dVector(valid_colors)
 
-            _, indices = self.point_cloud.remove_statistical_outlier(nb_neighbors=80, std_ratio=2.0)
+            _, indices = self.point_cloud.remove_statistical_outlier(nb_neighbors=40, std_ratio=2.0)
             filtered_cloud = self.point_cloud.select_by_index(indices)
 
             self.point_cloud.points = filtered_cloud.points
@@ -125,7 +125,7 @@ class VisualizationClient:
 
             view_control = self.visualizer.get_view_control()
 
-            view_control.set_zoom(0.5)
+            view_control.set_zoom(0.35)
 
             self.visualizer.update_geometry(self.point_cloud)
 
