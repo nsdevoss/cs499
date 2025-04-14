@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
@@ -194,7 +195,7 @@ fun AppHeader(){
         verticalAlignment = Alignment.CenterVertically
     ){
         Text(text="Oculosarus",
-            style =MaterialTheme.typography.headlineMedium,
+            style =MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.secondary)
 
         Image(
@@ -219,6 +220,7 @@ fun SelectionMenu(selectedOption: String, onOptionSelected: (String) -> Unit) {
                     .fillMaxWidth()
                     .height(56.dp)
                     .selectable(
+
                         selected = (text == selectedOption),
                         onClick = {onOptionSelected(text)},
 
@@ -283,11 +285,11 @@ fun connect(context: Context,
             onMessageReceived:(String) -> Unit
 
 ) {
-    Log.d("Connection attempt", "172.24.24.166 && 12345")
+    Log.d("Connection attempt", "172.24.28.216 && 9001")
     CoroutineScope(Dispatchers.Main).launch {
         val txtFromServer = withContext(Dispatchers.IO) {
 
-            socket = Socket("172.24.24.166", 12345)
+            socket = Socket("172.24.28.216", 9001)
             brInput = BufferedReader(InputStreamReader(socket.getInputStream()))
             brOutput = PrintWriter(socket.getOutputStream())
 
@@ -300,18 +302,20 @@ fun connect(context: Context,
         Toast.makeText(context, "Server message: $txtFromServer", Toast.LENGTH_LONG).show()
         onMessageReceived(txtFromServer)
 
-        readMessagesInBackground(onMessageReceived)
+        readMessagesInBackground(context, onMessageReceived)
     }
 }
 
-fun readMessagesInBackground(onMessageReceived: (String) -> Unit) {
+fun readMessagesInBackground(context: Context, onMessageReceived: (String) -> Unit) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
             connectionReady.await()
             while(true) {
                 val msg = brInput.readLine() ?: break
-                Log.d("Server Message" , msg)
+                Log.d("Server Message", "no string")
                 withContext(Dispatchers.Main) {
+                    triggerVibration(context)
+                    delay(3000L)
                     onMessageReceived(msg)
                 }
             }
