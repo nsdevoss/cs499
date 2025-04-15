@@ -170,7 +170,7 @@ def test_undistortion():
     camMatrix = data['camMatrix']
     distCoeff = data['distCoeff']
     newCamMatrix = data['newCamMatrix']
-    test_img_path = os.path.join(lc.ROOT_DIR, 'calibration', 'stereo', 'img_12.jpg')
+    test_img_path = os.path.join(lc.ROOT_DIR, 'calibration', 'stereo', 'calibration_capture.jpg')
 
     img = cv2.imread(test_img_path)
     if img is None:

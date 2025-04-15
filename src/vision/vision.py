@@ -91,6 +91,7 @@ class Vision:
             contour_map = np.zeros_like(left_frame)
 
             visualization_time = time.time()
+            start_time = time.time()
             while True:
                 try:
                     frame = self.frame_queue.get()
@@ -179,6 +180,9 @@ class Vision:
                             self.info_queue.put((left, points_3d, valid_dist_mask))
                             visualization_time = end_time
 
+                        now = time.time()
+                        # print(f"Time taken VISION: {(now - start_time) * 1000}")
+                        start_time = now
                         del frame, disp_colored, display_frame
 
                 except queue.Empty:
@@ -255,13 +259,14 @@ class Vision:
 
         # We find contours to filter out what we highlight, contours basically act as a filter as it makes areas of congested regions
         contours, _ = cv2.findContours(range_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        highlight_mask = np.zeros_like(range_mask)  # This mask is the same dimensions as the range 0,1 mask
-        highlight = np.zeros_like(
-            frame)  # This is what we will display, we create a new matrix the same size as the orig frame
+
+        highlight_mask = np.zeros_like(range_mask)
+        highlight_mask_colored = np.zeros_like(frame)
+        highlight_annotations = np.zeros_like(frame)
         contour_centers = np.zeros_like(frame)
         object_found = False
         current_objects = []
-        frame_with_boxes = frame.copy()
+
         for contour in contours:
             area = cv2.contourArea(contour)
             if area >= self.highlight_min_area:  # If the contour is big enough to be considered valid
@@ -317,8 +322,16 @@ class Vision:
             cx, cy = obj['center']
             distance = obj['distance']
 
+            if cx >= 170:
+                position = 'right'
+            elif cx <= 85:
+                position = 'left'
+            else:
+                position = 'center'
+
             object_info = {
                 'center': (cx, cy),
+                'position': position,
                 'distance': distance,
                 'bbox': (x, y, w, h),
                 'persistence': obj.get('persistence')
@@ -332,16 +345,17 @@ class Vision:
                 except queue.Full:
                     server_logger.get_logger().warning("object_detect_queue is full. Dropping object.")
 
-            cv2.rectangle(frame_with_boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(frame_with_boxes, f"{distance:.2f}m", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            cv2.drawContours(frame_with_boxes, [obj['contour']], -1, (0, 255, 0), 1)
+            cv2.rectangle(highlight_annotations, (x, y), (x + w, y + h), (255, 255, 255), 2)
+            cv2.putText(highlight_annotations, f"{distance:.2f}m", (x, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.highlight_color, 2)
+            cv2.drawContours(highlight_annotations, [obj['contour']], -1, self.highlight_color, 1)
 
-        highlight[highlight_mask > 0] = self.highlight_color
+        highlight_mask_colored[highlight_mask > 0] = self.highlight_color
+        highlight_blurred = cv2.GaussianBlur(highlight_mask_colored, (5, 5), 0)
 
-        highlight = cv2.GaussianBlur(highlight, (5, 5), 0)  # Smoothing
+        highlight_combined = cv2.add(highlight_blurred, highlight_annotations)
 
-        # We blend the overlays with the frame
-        blended_frame = cv2.addWeighted(highlight, self.highlight_alpha, frame_with_boxes, 1 - self.highlight_alpha, 0)
+        blended_frame = cv2.addWeighted(highlight_combined, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)
         blended_contour_centers = cv2.addWeighted(contour_centers, self.highlight_alpha, frame,
                                                   1 - self.highlight_alpha, 0)
 

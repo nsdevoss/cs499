@@ -6,7 +6,7 @@ import select
 import numpy as np
 import open3d as o3d
 
-############## This needs to be run as a singular file, it is not part of the program ######################
+############## This needs to be run as a singular file, it is not part of the program!!!!!!!! ######################
 
 class VisualizationClient:
     def __init__(self, server_ip, server_port):
@@ -16,6 +16,7 @@ class VisualizationClient:
         self.visualizer = None
         self.point_cloud = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]  # This is just a dummy value
         self.point_cloud_added = False
+        self.last_data_time = time.time()
         self.setup_visualization()
 
     def setup_visualization(self):
@@ -71,7 +72,8 @@ class VisualizationClient:
                 return None
 
             data = pickle.loads(serialized_data)
-            print("Received packet from server")
+            now = time.time()
+            print(f"Received packet from server after: {(now - self.last_data_time):.2f}s")
             return data
 
         except Exception as e:
@@ -115,11 +117,11 @@ class VisualizationClient:
                 self.point_cloud_added = True
 
             self.visualizer.update_geometry(self.point_cloud)
-
+            self.visualizer.reset_view_point(True)
             view_control = self.visualizer.get_view_control()
 
             view_control.set_zoom(0.35)
-
+            self.last_data_time = time.time()
         except Exception as e:
             print(f"Error updating visualization: {e}")
 
@@ -147,7 +149,7 @@ class VisualizationClient:
 
 
 if __name__ == "__main__":
-    server_ip = "192.168.1.161"
+    server_ip = "172.24.28.216"
     server_port = 9002
 
     client = VisualizationClient(server_ip, server_port)
