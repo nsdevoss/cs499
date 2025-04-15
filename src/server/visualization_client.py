@@ -6,8 +6,7 @@ import select
 import numpy as np
 import open3d as o3d
 
-
-############## This needs to be run as a singular file, it is not part of the program ######################
+############## This needs to be run as a singular file, it is not part of the program!!!!!!!! ######################
 
 class VisualizationClient:
     def __init__(self, server_ip, server_port):
@@ -15,7 +14,9 @@ class VisualizationClient:
         self.server_port = server_port
         self.client_socket = None
         self.visualizer = None
-        self.point_cloud = [[1,1,1], [1,1,1], [1,1,1]]  # This is just a dummy value
+        self.point_cloud = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]  # This is just a dummy value
+        self.point_cloud_added = False
+        self.last_data_time = time.time()
         self.setup_visualization()
 
     def setup_visualization(self):
@@ -71,7 +72,8 @@ class VisualizationClient:
                 return None
 
             data = pickle.loads(serialized_data)
-            print("Received packet from server")
+            now = time.time()
+            print(f"Received packet from server after: {(now - self.last_data_time):.2f}s")
             return data
 
         except Exception as e:
@@ -88,23 +90,38 @@ class VisualizationClient:
             valid_points[:, 2] = -valid_points[:, 2]
             valid_points[:, 1] = -valid_points[:, 1]
 
+            if len(valid_points) > 0:
+                depth_threshold = np.percentile(np.abs(valid_points[:, 2]), 95)
+                depth_mask = np.abs(valid_points[:, 2]) < depth_threshold
+                valid_points = valid_points[depth_mask]
+                valid_colors = valid_colors[depth_mask]
+
+            if len(valid_points) > 0:
+                min_z = np.min(valid_points[:, 2])
+                if min_z <= 0:
+                    valid_points[:, 2] = valid_points[:, 2] - min_z + 0.1
+
+                valid_points[:, 2] = (valid_points[:, 2] - np.min(valid_points[:, 2])) / (np.max(valid_points[:, 2]) - np.min(valid_points[:, 2]))
+
             self.point_cloud.points = o3d.utility.Vector3dVector(valid_points)
             self.point_cloud.colors = o3d.utility.Vector3dVector(valid_colors)
 
-            _, indices = self.point_cloud.remove_statistical_outlier(nb_neighbors=80, std_ratio=2.0)
+            _, indices = self.point_cloud.remove_statistical_outlier(nb_neighbors=40, std_ratio=2.0)
             filtered_cloud = self.point_cloud.select_by_index(indices)
 
             self.point_cloud.points = filtered_cloud.points
             self.point_cloud.colors = filtered_cloud.colors
 
-            self.visualizer.reset_view_point(True)
-
-            view_control = self.visualizer.get_view_control()
-
-            view_control.set_zoom(0.5)
+            if not self.point_cloud_added:
+                self.visualizer.add_geometry(self.point_cloud)
+                self.point_cloud_added = True
 
             self.visualizer.update_geometry(self.point_cloud)
+            self.visualizer.reset_view_point(True)
+            view_control = self.visualizer.get_view_control()
 
+            view_control.set_zoom(0.35)
+            self.last_data_time = time.time()
         except Exception as e:
             print(f"Error updating visualization: {e}")
 
@@ -132,7 +149,7 @@ class VisualizationClient:
 
 
 if __name__ == "__main__":
-    server_ip = "10.10.20.130"
+    server_ip = "172.24.28.216"
     server_port = 9002
 
     client = VisualizationClient(server_ip, server_port)

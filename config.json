@@ -2,8 +2,16 @@
   "emulator_arguments": {
     "enabled": true,
     "stream_enabled": false,
-    "video_name": "flag1",
-    "encode_quality": 100
+    "video_name": "flag2",
+    "encode_quality": 70
+  },
+  "pi_arguments": {
+    "hostname": "192.168.1.159",
+    "port": 22,
+    "username": "uab.edu",
+    "password": "pi",
+    "fps": 30,
+    "encode_quality": 70
   },
   "camera_server_arguments": {
     "port": 9000,
@@ -15,7 +23,8 @@
   "vision_arguments": {
     "enabled": true,
     "depth_map_capture": true,
-    "refresh_rate": 10,
+    "refresh_rate": 5,
+    "object_persistence_threshold": 30,
     "calibration_file": "calib_50/calibration_50.npz",
     "StereoSGBM_args": {
       "minDisparity": 0,
@@ -30,7 +39,7 @@
       "max_dist": 0.5,
       "min_dist": 0,
       "color": [12,237,16],
-      "alpha": 0.5,
+      "alpha": 0.75,
       "min_area": 800
     }
   }

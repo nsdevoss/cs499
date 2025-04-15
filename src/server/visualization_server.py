@@ -39,6 +39,4 @@ class VisualizationServer(SocketServer):
 
         except Exception as e:
             self.log_writer.error(f"Error sending data to client: {e}")
-            import traceback
-            self.log_writer.error(traceback.format_exc())
             raise
