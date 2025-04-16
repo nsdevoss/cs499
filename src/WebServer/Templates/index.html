@@ -1,179 +1,352 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-          .minecraft-font {
-            font-family: Monocraft, monospace;
-          }
-        </style>
-<!-- JavaScript to Handle Menu Toggle -->
-        <script>
-          function openMenu() {
-            document.getElementById("mobile-menu").classList.remove("hidden");
-          }
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            950: '#0a0a0f',
+                            900: '#101018',
+                            800: '#1a1a25',
+                            700: '#252532',
+                            600: '#32323e'
+                        },
+                        accent: {
+                            primary: '#6366f1',
+                            secondary: '#10b981',
+                            tertiary: '#0ea5e9'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Monocraft', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-          function closeMenu() {
-            document.getElementById("mobile-menu").classList.add("hidden");
-          }
-        </script>
-<!-- CSS for Responsive Video -->
-        <style>
-            /* Main container for centering */
-            .video-wrapper {
-                position: relative;
-                width: 90%; /* Adjust width for mobile */
-                max-width: 600px; /* Prevent oversized scaling */
-                margin: auto; /* Centers everything */
-            }
+        /* Main container for centering */
+        .video-wrapper {
+            position: relative;
+            width: 90%;
+            max-width: 720px;
+            margin: auto;
+        }
 
-            /* Rounded black background behind video */
-            .video-background {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                border-radius: 20px; /* Rounded corners */
-                background-color: black; /* Solid black */
-                padding: 20px;
-                z-index: -1; /* Places behind the video */
-            }
+        /* Video background */
+        .video-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            background-color: rgba(15, 15, 20, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: -1;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
 
-            /* Video content styling */
-            .video-content {
-                position: relative;
-                padding: 20px; /* Creates spacing within the rounded square */
-            }
+        /* Video content styling */
+        .video-content {
+            position: relative;
+            padding: 20px;
+        }
 
-            /* Wrapper to prevent stretching */
-            .responsive-video-wrapper {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                width: 100%;
-            }
+        /* Auto-resize video */
+        .responsive-video {
+            width: 100%;
+            height: auto;
+            max-width: 640px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
 
-            /* Auto-resize video */
-            .responsive-video {
-                width: 100%; /* Takes full container width */
-                height: auto; /* Maintains aspect ratio */
-                max-width: 480px; /* Prevents too large scaling */
-                border-radius: 15px; /* Slight rounding for smooth look */
-            }
+        body {
+            background-color: #0a0a0f;
+            font-family: 'Inter', sans-serif;
+        }
 
-            /* Prevent horizontal scrolling */
-            html, body {
-                max-width: 100vw;
-                overflow-x: hidden;
-            }
-        </style>
-        <style>
-            body {
-                background-size: cover; /* Ensures the image fully covers the screen */
-                background-position: center; /* Centers the image */
-                background-repeat: no-repeat; /* Prevents repeating */
-                background-attachment: fixed; /* Keeps the background fixed */
-                min-height: 100vh; /* Ensures full viewport height */
-            }
+        /* Glow effect for accent elements */
+        .glow {
+            position: relative;
+        }
 
-            html, body {
-                width: 100vw; /* Prevents horizontal overflow */
-                overflow-x: hidden; /* Removes horizontal scrolling */
-                overflow-y: auto; /* Allows vertical scrolling */
-                margin: 0;
-                padding: 0;
-            }
-        </style>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  </head>
-    <body>
-<!-- Start of Body -->
-<!-- Gradient Background -->
-<div class="bg-gradient-to-r from-indigo-500 from-10% via-sky-500 via-30% to-emerald-500 to-90%">
-    <header class="absolute inset-x-0 top-0 z-50">
-    <nav class="flex items-center justify-between p-6 lg:px-8" aria-label="Global">
-      <div class="flex lg:flex-1">
-        <a href="#" class="-m-1.5 p-1.5">
-          <span class="sr-only">Oculosaurus</span>
-          <img class="h-8 w-auto" src="images/oculosaur.webp" alt="oculosaurus image">
-        </a>
-      </div>
-      <div class="flex lg:hidden">
-<!-- Button to Open Menu -->
-        <button type="button" class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700">
-          <svg onclick="openMenu()" class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
-        </button>
-      </div>
-      <div class="hidden lg:flex lg:gap-x-12">
-        <a href="https://linktr.ee/_Oculosaurus" class="minecraft-font text-sm/6 font-semibold text-gray-900">LinkTree</a>
-        <a href="https://github.com/nsdevoss/cs499" class="minecraft-font text-sm/6 font-semibold text-gray-900">GitHub</a>
-        <a href="#about" class="minecraft-font text-sm/6 font-semibold text-gray-900">About</a>
-      </div>
-      <div class="hidden lg:flex lg:flex-1 lg:justify-end">
-        <a href="#" class="text-sm/6 font-semibold text-gray-900"></a>
-      </div>
-    </nav>
-<!-- Mobile menu container -->
-    <div id="mobile-menu" class="lg:hidden fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
-<!-- Background backdrop -->
-      <div class="fixed inset-0 bg-black opacity-50" onclick="closeMenu()"></div>
-      <div class="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
-        <div class="flex items-center justify-between">
-          <a href="#" class="-m-1.5 p-1.5">
-            <span class="sr-only">Oculosaurus</span>
-            <img class="h-8 w-auto" src="images/oculosaur.webp" alt="">
-          </a>
-          <button type="button" class="-m-2.5 rounded-md p-2.5 text-gray-700" onclick="closeMenu()">
-            <span class="sr-only">Close menu</span>
-            <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="mt-6 flow-root">
-          <div class="-my-6 divide-y divide-gray-500/10">
-            <div class="space-y-2 py-6">
-              <a href="https://linktr.ee/_Oculosaurus" class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">LinkTree</a>
-              <a href="https://github.com/nsdevoss/cs499" class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">GitHub</a>
-              <a href="#about" class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">About</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-  <div class="relative isolate px-6 pt-0 lg:px-8">
-    <div class="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
-        <div id="video-container" class="video-wrapper">
-            <!-- Rounded Black Background -->
-            <div class="video-background"></div>
-            <div id="video-square" class="video-content">
-                <h1 class="text-center minecraft-font text-4xl sm:text-5xl tracking-tight text-balance text-white p-2">Video Feed</h1>
-<!-- ****************************** Video Stream ****************************** -->
-                <div id="video" class="responsive-video-wrapper">
-                    <img src="/video" id="streaming-video" class="responsive-video" alt="Live Stream">
+        .glow::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: inherit;
+            box-shadow: 0 0 20px 2px rgba(99, 102, 241, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .glow:hover::after {
+            opacity: 1;
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+    <script>
+        // Toggle mobile menu
+        function toggleMenu() {
+            const menu = document.getElementById("mobile-menu");
+            const overlay = document.getElementById("overlay");
+
+            menu.classList.toggle("translate-x-0");
+            menu.classList.toggle("-translate-x-full");
+            overlay.classList.toggle("opacity-0");
+            overlay.classList.toggle("opacity-50");
+            overlay.classList.toggle("pointer-events-none");
+        }
+
+        // On page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+        });
+    </script>
+</head>
+<body class="bg-dark-950 text-gray-200 min-h-screen">
+    <!-- Overlay for mobile menu -->
+    <div id="overlay" class="fixed inset-0 z-40 bg-black opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+    <!-- Fixed Navigation Bar -->
+    <header class="fixed w-full top-0 z-50 bg-dark-900/80 backdrop-blur-md border-b border-dark-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center">
+                    <a href="#" class="flex items-center">
+                        <img class="h-8 w-auto" src="https://ih1.redbubble.net/image.2296722202.8840/bg,f8f8f8-flat,750x,075,f-pad,750x1000,f8f8f8.jpg" alt="Oculosaurus">
+                        <span class="ml-2 text-lg font-bold bg-gradient-to-r from-accent-primary to-accent-secondary text-transparent bg-clip-text">Oculosaurus</span>
+                    </a>
                 </div>
-<!-- ************************************************************************** -->
+
+                <!-- Desktop Navigation -->
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-center space-x-8">
+                        <a href="#" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">Home</a>
+                        <a href="#video-feed" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">Stream</a>
+                        <a href="#about" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">About</a>
+                        <a href="#features" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">Features</a>
+                        <a href="https://github.com/nsdevoss/cs499" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">GitHub</a>
+                    </div>
+                </div>
+
+                <!-- Mobile menu button -->
+                <div class="flex md:hidden">
+                    <button type="button" onclick="toggleMenu()" class="text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-primary rounded-md p-2">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Mobile Navigation Menu -->
+        <div id="mobile-menu" class="md:hidden fixed inset-y-0 left-0 transform -translate-x-full transition duration-300 ease-in-out z-50 w-64 bg-dark-800 shadow-lg border-r border-dark-600">
+            <div class="p-4 border-b border-dark-600">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <img class="h-8 w-auto" src="https://ih1.redbubble.net/image.2296722202.8840/bg,f8f8f8-flat,750x,075,f-pad,750x1000,f8f8f8.jpg" alt="Oculosaurus">
+                        <span class="ml-2 text-lg font-semibold">Oculosaurus</span>
+                    </div>
+                    <button type="button" onclick="toggleMenu()" class="text-gray-400 hover:text-white">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="pt-2 pb-3 space-y-1">
+                <a href="#" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-white bg-dark-700">Home</a>
+                <a href="#video-feed" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">Stream</a>
+                <a href="#about" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">About</a>
+                <a href="#features" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">Features</a>
+                <a href="https://github.com/nsdevoss/cs499" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">GitHub</a>
+            </div>
+            <div class="pt-4 pb-3 border-t border-dark-600">
+                <div class="flex items-center px-4">
+                    <a href="https://linktr.ee/_Oculosaurus" class="flex-shrink-0 w-full bg-accent-primary/10 text-accent-primary py-2 px-4 rounded-md text-center hover:bg-accent-primary/20 transition-colors">
+                        LinkTree
+                    </a>
+                </div>
             </div>
         </div>
-<!--************************************************************************************-->
-        <div class="mt-10 flex items-center justify-center gap-x-6">
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-16 overflow-hidden">
+        <div class="bg-gradient-to-b from-accent-primary/5 to-transparent absolute inset-0 z-0"></div>
+
+        <!-- Animated gradient blob in background -->
+        <div class="absolute -left-40 -top-40 opacity-20 z-0">
+            <div class="w-96 h-96 bg-accent-primary rounded-full filter blur-3xl animate-pulse"></div>
         </div>
-      </div>
-    </div>
-<!-- "About" Section -->
-    <div id="about" class="text-center minecraft-font text-5xl tracking-tight text-balance text-white sm:text-5xl p-2">About
-      <p class="text-2xl p-6">  This is a paragraph of text.<br>This is another paragraph of text<br>another one</p>
-    </div>
-    <div class="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]" aria-hidden="true">
-      <div class="relative left-[calc(50%+3rem)] aspect-1155/678 w-[36.125rem] -translate-x-1/2 bg-linear-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]" style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"></div>
-    </div>
-  </div>
-</div>
-    </body>
-</html>
+        <div class="absolute -right-20 top-60 opacity-20 z-0">
+            <div class="w-96 h-96 bg-accent-secondary rounded-full filter blur-3xl animate-pulse" style="animation-delay: 2s"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 relative z-10">
+            <div class="text-center">
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-accent-primary via-accent-tertiary to-accent-secondary text-transparent bg-clip-text pb-2">Oculosaurus Vision System</h1>
+                <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-400">Real-time depth perception and obstacle detection for enhanced spatial awareness</p>
+                <div class="mt-8 flex justify-center space-x-4">
+                    <a href="#video-feed" class="glow px-6 py-3 bg-accent-primary hover:bg-accent-primary/90 text-white font-medium rounded-lg shadow-lg transition-all duration-200">View Live Stream</a>
+                    <a href="#about" class="px-6 py-3 bg-dark-800 hover:bg-dark-700 border border-dark-600 text-white font-medium rounded-lg transition-colors duration-200">Learn More</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Video Feed Section -->
+    <section id="video-feed" class="py-16 relative overflow-hidden">
+        <img src="/static/images/gifsbut_-_1831750643175784494.gif" alt="Computer man" style="width:48px;height:48px;">
+        <!-- Subtle grid pattern overlay -->
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMxLjIgMCAyLjEgMSAyLjEgMi4yczEgMi4xIDIuMSAyLjFjMS4yIDAgMi4xLTEgMi4xLTIuMXMxLTIuMSAyLjEtMi4xYzEuMiAwIDIuMSAxIDIuMSAyLjFzMSAyLjEgMi4xIDIuMWMxLjIgMCAyLjEtMSAyLjEtMi4xcy0uOS0yLjEtMi4xLTIuMWMtMS4yIDAtMi4xLTEtMi4xLTIuMXMuOS0yLjEgMi4xLTIuMWMxLjIgMCAyLjEgMSAyLjEgMi4xcy45IDIuMSAyLjEgMi4xYzAuMiAwIDAuMyAwLjEgMC40IDAuMUw1NiAxNmMwLjIgMCAwLjMgMCAwLjQtMC4xIDAuMS0wLjEgMC4xLTAuMiAwLjEtMC40di01LjljMC0wLjItMC4xLTAuMy0wLjEtMC40IC0wLjEtMC4xLTAuMi0wLjEtMC40LTAuMWgtNS45Yy0wLjIgMC0wLjMgMC4xLTAuNCAwLjEgLTAuMSAwLjEtMC4xIDAuMi0wLjEgMC40Iiwgc3Ryb2tlPSIjMjIyMjI4IiBzdHJva2Utd2lkdGg9IjAuNSIvPjwvZz48L3N2Zz4=')] opacity-5"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold bg-gradient-to-r from-accent-primary to-accent-tertiary text-transparent bg-clip-text">Live Video Feed</h2>
+                <p class="mt-2 text-gray-400">Real-time streaming from the Oculosaurus stereo vision system</p>
+            </div>
+
+            <div id="video-container" class="video-wrapper">
+                <!-- Video Background -->
+                <div class="video-background"></div>
+
+                <div id="video-square" class="video-content">
+                    <!-- Status indicator -->
+                    <div class="absolute top-4 right-4 flex items-center space-x-2 bg-dark-900/60 py-1 px-3 rounded-full">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-xs font-medium text-green-400">Live</span>
+                    </div>
+
+                    <!-- Video Stream -->
+                    <div class="responsive-video-wrapper">
+                        <img src="/video" id="streaming-video" class="responsive-video" alt="Live Stream">
+                    </div>
+
+                    <!-- Video Controls -->
+                    <div class="mt-4 flex justify-between items-center">
+                        <div class="text-sm text-gray-400">
+                            <span id="resolution">640×480</span> • <span id="fps">30 FPS</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m0 0l-2.828 2.828m0 0a9 9 0 010-12.728m2.828 2.828l-2.828-2.828" />
+                                </svg>
+                            </button>
+                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </button>
+                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-16 bg-dark-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold bg-gradient-to-r from-accent-primary to-accent-tertiary text-transparent bg-clip-text">About Oculosaurus</h2>
+                <p class="mt-2 text-gray-400">The next generation of stereo vision technology</p>
+            </div>
+
+            <div class="bg-dark-800 rounded-xl overflow-hidden shadow-xl border border-dark-600">
+                <div class="md:flex">
+                    <div class="md:w-1/2 p-8">
+                        <h3 class="text-2xl font-semibold text-white mb-4">Real-time Depth Perception</h3>
+                        <p class="text-gray-300 mb-4">
+                            Oculosaurus is a cutting-edge stereo vision application that detects the depth of anything the user is looking at. Using a stereo camera connected to a Raspberry Pi, the system captures frames and sends them to a server for processing.
+                        </p>
+                        <p class="text-gray-300 mb-4">
+                            The server then connects to a mobile app that provides real-time notifications to users if they are about to collide with objects in their environment, enhancing spatial awareness and safety.
+                        </p>
+                        <p class="text-gray-300">
+                            Built with Python OpenCV, Android Studio, and YOLO11 from Ultralytics, Oculosaurus represents the future of assistive vision technology.
+                        </p>
+                    </div>
+                    <div class="md:w-1/2 bg-dark-700 flex items-center justify-center p-8">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-dark-800 p-4 rounded-lg border border-dark-600">
+                                <div class="text-accent-primary mb-2">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </div>
+                                <h4 class="font-medium text-white">Stereo Vision</h4>
+                                <p class="text-sm text-gray-400 mt-1">Dual camera system for accurate depth mapping</p>
+                            </div>
+                            <div class="bg-dark-800 p-4 rounded-lg border border-dark-600">
+                                <div class="text-accent-secondary mb-2">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                    </svg>
+                                </div>
+                                <h4 class="font-medium text-white">Real-time Processing</h4>
+                                <p class="text-sm text-gray-400 mt-1">Instant depth calculation and analysis</p>
+                            </div>
+                            <div class="bg-dark-800 p-4 rounded-lg border border-dark-600">
+                                <div class="text-accent-tertiary mb-2">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <h4 class="font-medium text-white">Mobile Alerts</h4>
+                                <p class="text-sm text-gray-400 mt-1">Instant collision warnings via mobile app</p>
+                            </div>
+                            <div class="bg-dark-800 p-4 rounded-lg border border-dark-600">
+                                <div class="text-pink-500 mb-2">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                    </svg>
+                                </div>
+                                <h4 class="font-medium text-white">Object Detection</h4>
+                                <p class="text-sm text-gray-400 mt-1">YOLO11-powered object recognition system</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>

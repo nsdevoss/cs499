@@ -137,15 +137,12 @@ class Vision:
 
                         if display_frame is None or display_frame.shape[1] != highlighted_frame.shape[1] + \
                                 disp_colored.shape[1]:
-                            # Increase height to accommodate 3 rows instead of 2
                             display_frame = np.zeros(
                                 (max(highlighted_frame.shape[0], disp_colored.shape[0]) * 3,
-                                 # Triple the height for 3 rows
                                  highlighted_frame.shape[1] + disp_colored.shape[1], 3),
                                 dtype=np.uint8
                             )
 
-                        # First row (top)
                         display_frame[:highlighted_frame.shape[0],
                         :highlighted_frame.shape[1]] = highlighted_frame  # Top-left
                         display_frame[:disp_colored.shape[0],
@@ -155,18 +152,18 @@ class Vision:
                         # Second row (middle)
                         middle_y_offset = highlighted_frame.shape[0]
                         display_frame[middle_y_offset:middle_y_offset + contour_centers.shape[0],
-                        :contour_centers.shape[1]] = contour_centers  # Middle-left
+                        :contour_centers.shape[1]] = contour_centers
                         display_frame[middle_y_offset:middle_y_offset + contour_map.shape[0],
                         highlighted_frame.shape[1]:highlighted_frame.shape[1] + contour_map.shape[
-                            1]] = contour_map  # Middle-right
+                            1]] = contour_map
 
                         # Third row (bottom) - original frames
                         bottom_y_offset = middle_y_offset + highlighted_frame.shape[0]
                         display_frame[bottom_y_offset:bottom_y_offset + left.shape[0],
-                        :left.shape[1]] = left  # Bottom-left (original left frame)
+                        :left.shape[1]] = left
                         display_frame[bottom_y_offset:bottom_y_offset + right.shape[0],
                         highlighted_frame.shape[1]:highlighted_frame.shape[1] + right.shape[
-                            1]] = right  # Bottom-right (original right frame)
+                            1]] = right
 
                         if self.display_queue is not None:
                             self.display_queue.put(display_frame)
