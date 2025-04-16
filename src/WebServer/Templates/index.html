@@ -105,7 +105,6 @@
         }
     </style>
     <script>
-        // Toggle mobile menu
         function toggleMenu() {
             const menu = document.getElementById("mobile-menu");
             const overlay = document.getElementById("overlay");
@@ -117,9 +116,7 @@
             overlay.classList.toggle("pointer-events-none");
         }
 
-        // On page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Add smooth scroll for anchor links
             document.querySelectorAll('a[href^="#"]').forEach(anchor => {
                 anchor.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -185,7 +182,7 @@
                 </div>
             </div>
             <div class="pt-2 pb-3 space-y-1">
-                <a href="#" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-white bg-dark-700">Home</a>
+                <a href="#hero" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-white bg-dark-700">Home</a>
                 <a href="#video-feed" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">Stream</a>
                 <a href="#about" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">About</a>
                 <a href="#features" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">Features</a>
@@ -227,7 +224,7 @@
 
     <!-- Video Feed Section -->
     <section id="video-feed" class="py-16 relative overflow-hidden">
-        <img src="/static/images/gifsbut_-_1831750643175784494.gif" alt="Computer man" style="width:48px;height:48px;">
+        <!-- <img src="/static/images/gifsbut_-_1831750643175784494.gif" alt="Computer man" style="width:48px;height:48px;"> -->
         <!-- Subtle grid pattern overlay -->
         <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMxLjIgMCAyLjEgMSAyLjEgMi4yczEgMi4xIDIuMSAyLjFjMS4yIDAgMi4xLTEgMi4xLTIuMXMxLTIuMSAyLjEtMi4xYzEuMiAwIDIuMSAxIDIuMSAyLjFzMSAyLjEgMi4xIDIuMWMxLjIgMCAyLjEtMSAyLjEtMi4xcy0uOS0yLjEtMi4xLTIuMWMtMS4yIDAtMi4xLTEtMi4xLTIuMXMuOS0yLjEgMi4xLTIuMWMxLjIgMCAyLjEgMSAyLjEgMi4xcy45IDIuMSAyLjEgMi4xYzAuMiAwIDAuMyAwLjEgMC40IDAuMUw1NiAxNmMwLjIgMCAwLjMgMCAwLjQtMC4xIDAuMS0wLjEgMC4xLTAuMiAwLjEtMC40di01LjljMC0wLjItMC4xLTAuMy0wLjEtMC40IC0wLjEtMC4xLTAuMi0wLjEtMC40LTAuMWgtNS45Yy0wLjIgMC0wLjMgMC4xLTAuNCAwLjEgLTAuMSAwLjEtMC4xIDAuMi0wLjEgMC40Iiwgc3Ryb2tlPSIjMjIyMjI4IiBzdHJva2Utd2lkdGg9IjAuNSIvPjwvZz48L3N2Zz4=')] opacity-5"></div>
 
@@ -256,7 +253,7 @@
                     <!-- Video Controls -->
                     <div class="mt-4 flex justify-between items-center">
                         <div class="text-sm text-gray-400">
-                            <span id="resolution">640×480</span> • <span id="fps">30 FPS</span>
+                            <span id="resolution">{{dimensions}}</span> • <span id="fps">30 FPS</span>
                         </div>
                         <div class="flex space-x-2">
                             <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">

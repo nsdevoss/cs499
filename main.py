@@ -1,4 +1,5 @@
 import multiprocessing
+import src.LocalCommon as lc
 from src.pi import emulator
 from src.utils import utils
 from datetime import datetime
@@ -29,8 +30,9 @@ def start_app_server(object_detect_queue):
     app_server = AppCommunicationServer(object_detect_queue)
     app_server.connect_to_app()
 
-def start_webserver(display_queue):
-    web_server = WebServerDisplay(display_queue=display_queue)
+def start_webserver(display_queue, scale):
+    frame_dimensions = str(f"{int(lc.DEFAULT_FRAME_DIMENSIONS[1] * scale)}x{int(lc.DEFAULT_FRAME_DIMENSIONS[0] * scale * 3)}")
+    web_server = WebServerDisplay(display_queue=display_queue, frame_dimensions=frame_dimensions)
     web_server.run()
 
 def start_emulator(ip_addr, emulator_args, camera_server_args):
@@ -87,7 +89,7 @@ def main(camera_server_args, pi_args, emulator_args, vision_args):
         processes.append(visualization_server_process)
 
     ###### Web Server start process ######
-    webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,))
+    webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,camera_server_args.get("scale")))
     webserver_process.start()
     processes.append(webserver_process)
 

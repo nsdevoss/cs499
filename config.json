@@ -2,7 +2,7 @@
   "emulator_arguments": {
     "enabled": true,
     "stream_enabled": false,
-    "video_name": "flag2",
+    "video_name": "flag1",
     "encode_quality": 70
   },
   "pi_arguments": {
