@@ -1,7 +1,9 @@
+import math
 import time
 import cv2
 import queue
 import os
+import uuid
 import numpy as np
 import src.LocalCommon as lc
 from src.server.logger import server_logger
@@ -24,6 +26,7 @@ class Vision:
         self.info_queue = info_queue
         self.vision_args = vision_args
         self.scale = scale
+        self.percent_scaled_down = vision_args.get("percent_scaled_down")
         self.calibration_file = os.path.join(lc.CALIBRATION_DIR, self.vision_args.get("calibration_file"))
         # Depth args
         self.display_frame = None
@@ -160,10 +163,10 @@ class Vision:
                         # Third row (bottom) - original frames
                         bottom_y_offset = middle_y_offset + highlighted_frame.shape[0]
                         display_frame[bottom_y_offset:bottom_y_offset + left.shape[0],
-                        :left.shape[1]] = left
+                        :left.shape[1]] = left_frame
                         display_frame[bottom_y_offset:bottom_y_offset + right.shape[0],
                         highlighted_frame.shape[1]:highlighted_frame.shape[1] + right.shape[
-                            1]] = right
+                            1]] = right_frame
 
                         if self.display_queue is not None:
                             self.display_queue.put(display_frame)
@@ -254,6 +257,14 @@ class Vision:
         range_mask = cv2.morphologyEx(range_mask, cv2.MORPH_CLOSE, kernel)
         range_mask = cv2.morphologyEx(range_mask, cv2.MORPH_OPEN, kernel)
 
+        height, width = range_mask.shape
+        margin_x = int(width * self.percent_scaled_down * 0.5)
+        margin_y = int(height * self.percent_scaled_down * 0.5)
+
+        middle_mask = np.zeros_like(range_mask)
+        middle_mask[margin_y:height - margin_y, margin_x:width - margin_x] = 255
+
+        range_mask = cv2.bitwise_and(range_mask, middle_mask)
         # We find contours to filter out what we highlight, contours basically act as a filter as it makes areas of congested regions
         contours, _ = cv2.findContours(range_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -293,7 +304,7 @@ class Vision:
                         })
 
                         object_found = True
-                        contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
+                        contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=4, color=(0, 255, 0), thickness=-1)
                         contour_map = cv2.circle(contour_map, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
 
                 cv2.drawContours(highlight_mask, [contour], -1, 255, -1)
@@ -339,19 +350,15 @@ class Vision:
             if self.object_detect_queue is not None and obj.get('persistence', 0) >= self.object_persistence_threshold:
                 try:
                     self.object_detect_queue.put_nowait(object_info)
+                    cv2.putText(highlight_annotations, f"{distance:.2f}m", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.highlight_color, 2)
+                    cv2.drawContours(highlight_annotations, [obj['contour']], -1, self.highlight_color, 1)
+                    cv2.rectangle(highlight_annotations, (x, y), (x + w, y + h), (255, 255, 255), 2)
                 except queue.Full:
                     server_logger.get_logger().warning("object_detect_queue is full. Dropping object.")
 
-            cv2.rectangle(highlight_annotations, (x, y), (x + w, y + h), (255, 255, 255), 2)
-            cv2.putText(highlight_annotations, f"{distance:.2f}m", (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.highlight_color, 2)
-            cv2.drawContours(highlight_annotations, [obj['contour']], -1, self.highlight_color, 1)
-
+        cv2.rectangle(highlight_annotations, (int(frame.shape[1] * self.percent_scaled_down * 0.5),int(frame.shape[0] * self.percent_scaled_down * 0.5)),(frame.shape[1] - math.floor(frame.shape[1]*self.percent_scaled_down * 0.5),frame.shape[0] - math.floor(frame.shape[0]*self.percent_scaled_down * 0.5)), (0, 255, 0), 2)
         highlight_mask_colored[highlight_mask > 0] = self.highlight_color
-        highlight_blurred = cv2.GaussianBlur(highlight_mask_colored, (5, 5), 0)
-
-        highlight_combined = cv2.add(highlight_blurred, highlight_annotations)
-
+        highlight_combined = cv2.add(highlight_mask_colored, highlight_annotations)
         blended_frame = cv2.addWeighted(highlight_combined, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)
         blended_contour_centers = cv2.addWeighted(contour_centers, self.highlight_alpha, frame,
                                                   1 - self.highlight_alpha, 0)

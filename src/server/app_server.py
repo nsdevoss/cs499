@@ -23,6 +23,7 @@ class AppCommunicationServer(SocketServer):
         while True:
             self.log_writer.info(f"Waiting for a connection on {self.host}:{self.port}")
             conn, addr = self.server_socket.accept()
+            self.object_detect_queue.empty()
             self.log_writer.info(f"Got a connection from: {addr}")
             self.send_message(conn, addr)
 
@@ -39,6 +40,8 @@ class AppCommunicationServer(SocketServer):
                     msg = f"There is an object with distance: {entry.get('distance'):.2f}m, persistence: {entry.get('persistence')}, center: {entry.get('center')}\n"
                     conn.send(msg.encode())
                     self.log_writer.info(f"Sent message {msg} to {addr}")
+                else:
+                    continue
 
         except (ConnectionResetError, BrokenPipeError) as e:
             server_logger.get_logger().info(f"{e}, APP CLIENT disconnected, Waiting for a new connection...")
