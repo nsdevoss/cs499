@@ -7,7 +7,7 @@ class Config:
     _config_data = {}
 
     DEFAULT_CONFIG = {
-        {
+
             "emulator_arguments": {
                 "enabled": True,
                 "stream_enabled": False,
@@ -54,7 +54,7 @@ class Config:
                 }
             }
         }
-    }
+
 
     @classmethod
     def get_config_path(cls):
