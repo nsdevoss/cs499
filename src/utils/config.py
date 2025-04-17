@@ -7,39 +7,51 @@ class Config:
     _config_data = {}
 
     DEFAULT_CONFIG = {
-        "emulator_arguments": {
-            "enabled": True,
-            "stream_enabled": False,
-            "video_name": "flag1",
-            "encode_quality": 100
-        },
-        "camera_server_arguments": {
-            "port": 9000,
-            "host": "0.0.0.0",
-            "socket_type": "TCP",
-            "fps": 30,
-            "scale": 0.2
-        },
-        "vision_arguments": {
-            "enabled": True,
-            "depth_map_capture": True,
-            "refresh_rate": 10,
-            "calibration_file": "calib_50/calibration_50.npz",
-            "StereoSGBM_args": {
-                "minDisparity": 0,
-                "numDisparities": 32,
-                "blockSize": 5,
-                "uniquenessRatio": 30,
-                "speckleWindowSize": 100,
-                "speckleRange": 2,
-                "disp12MaxDiff": 1
+        {
+            "emulator_arguments": {
+                "enabled": True,
+                "stream_enabled": False,
+                "video_name": "flag1",
+                "encode_quality": 70
             },
-            "distance_args": {
-                "max_dist": 0.5,
-                "min_dist": 0,
-                "color": [12, 237, 16],
-                "alpha": 0.5,
-                "min_area": 800
+            "pi_arguments": {
+                "hostname": "192.168.1.159",
+                "port": 22,
+                "username": "uab.edu",
+                "password": "pi",
+                "fps": 30,
+                "encode_quality": 70
+            },
+            "camera_server_arguments": {
+                "port": 9000,
+                "host": "0.0.0.0",
+                "socket_type": "TCP",
+                "fps": 30,
+                "scale": 0.2
+            },
+            "vision_arguments": {
+                "enabled": True,
+                "depth_map_capture": True,
+                "refresh_rate": 5,
+                "object_persistence_threshold": 5,
+                "percent_scaled_down": 0.2,
+                "calibration_file": "calib_50/calibration_50.npz",
+                "StereoSGBM_args": {
+                    "minDisparity": 0,
+                    "numDisparities": 32,
+                    "blockSize": 5,
+                    "uniquenessRatio": 30,
+                    "speckleWindowSize": 100,
+                    "speckleRange": 2,
+                    "disp12MaxDiff": 1
+                },
+                "distance_args": {
+                    "max_dist": 0.5,
+                    "min_dist": 0,
+                    "color": [12, 237, 16],
+                    "alpha": 0.75,
+                    "min_area": 800
+                }
             }
         }
     }

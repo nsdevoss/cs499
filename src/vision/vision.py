@@ -350,7 +350,7 @@ class Vision:
             if self.object_detect_queue is not None and obj.get('persistence', 0) >= self.object_persistence_threshold:
                 try:
                     self.object_detect_queue.put_nowait(object_info)
-                    cv2.putText(highlight_annotations, f"{distance:.2f}m", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.highlight_color, 2)
+                    cv2.putText(highlight_annotations, f"{distance:.2f}m", (cx, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.drawContours(highlight_annotations, [obj['contour']], -1, self.highlight_color, 1)
                     cv2.rectangle(highlight_annotations, (x, y), (x + w, y + h), (255, 255, 255), 2)
                 except queue.Full:
