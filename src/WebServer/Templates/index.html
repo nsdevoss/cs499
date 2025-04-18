@@ -74,6 +74,7 @@
         body {
             background-color: #0a0a0f;
             font-family: 'Inter', sans-serif;
+            overflow-x hidden;
         }
 
         /* Glow effect for accent elements */
@@ -91,7 +92,7 @@
             border-radius: inherit;
             box-shadow: 0 0 20px 2px rgba(99, 102, 241, 0.3);
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity 1.0s ease;
             z-index: -1;
         }
 
@@ -102,6 +103,116 @@
         /* Smooth scrolling */
         html {
             scroll-behavior: smooth;
+        }
+
+        /* Animated background elements */
+        .animated-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(40px);
+            opacity: 0.4;
+            animation: floating 20s infinite ease-in-out;
+        }
+
+        .animated-blob:nth-child(1) {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(99,102,241,0.7) 0%, rgba(99,102,241,0) 70%);
+            left: -150px;
+            top: -100px;
+            animation-delay: 5s;
+        }
+
+        .animated-blob:nth-child(2) {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(16,185,129,0.7) 0%, rgba(16,185,129,0) 70%);
+            right: -100px;
+            top: 200px;
+            animation-delay: 5s;
+        }
+
+<!--        .animated-blob:nth-child(3) {-->
+<!--            width: 350px;-->
+<!--            height: 350px;-->
+<!--            background: radial-gradient(circle, rgba(14,165,233,0.7) 0%, rgba(14,165,233,0) 70%);-->
+<!--            left: 50%;-->
+<!--            top: 500px;-->
+<!--            animation-delay: 10s;-->
+<!--        }-->
+
+        .animated-blob:nth-child(3) {
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(217,70,239,0.7) 0%, rgba(217,70,239,0) 70%);
+            left: 30%;
+            top: 50px;
+            animation-delay: 15s;
+        }
+
+<!--        @keyframes floating {-->
+<!--            0% {-->
+<!--                transform: translate(0px, 0px) scale(1);-->
+<!--            }-->
+<!--            25% {-->
+<!--                transform: translate(50px, 50px) scale(1.05);-->
+<!--            }-->
+<!--            50% {-->
+<!--                transform: translate(0px, 100px) scale(0.95);-->
+<!--            }-->
+<!--            75% {-->
+<!--                transform: translate(-50px, 50px) scale(1.05);-->
+<!--            }-->
+<!--            100% {-->
+<!--                transform: translate(0px, 0px) scale(1);-->
+<!--            }-->
+<!--        }-->
+@keyframes floating {
+    0% {
+        transform: translate(0px, 0px) scale(1);
+    }
+    12.5% {
+        transform: translate(50px, -50px) scale(1.05);
+    }
+    25% {
+        transform: translate(100px, 0px) scale(1);
+    }
+    37.5% {
+        transform: translate(50px, 50px) scale(0.95);
+    }
+    50% {
+        transform: translate(0px, 0px) scale(1);
+    }
+    62.5% {
+        transform: translate(-50px, -50px) scale(1.05);
+    }
+    75% {
+        transform: translate(-100px, 0px) scale(1);
+    }
+    87.5% {
+        transform: translate(-50px, 50px) scale(0.95);
+    }
+    100% {
+        transform: translate(0px, 0px) scale(1);
+    }
+}
+
+        /* Subtle particle background */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: rise linear infinite;
         }
     </style>
     <script>
@@ -125,10 +236,64 @@
                     });
                 });
             });
+        // Create particle background
+            const particlesContainer = document.createElement('div');
+            particlesContainer.className = 'particles';
+            document.body.appendChild(particlesContainer);
+
+            // Create particles
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+
+                // Random properties
+                const size = Math.random() * 3 + 1; // 1-4px
+                const posX = Math.random() * 100; // 0-100%
+                const duration = Math.random() * 15 + 10; // 10-25s
+                const delay = Math.random() * 5; // 0-5s
+                const opacity = Math.random() * 0.3; // 0-0.3
+
+                // Apply styles
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${posX}%`;
+                particle.style.bottom = '-5px';
+                particle.style.opacity = opacity;
+                particle.style.animation = `rise ${duration}s linear ${delay}s infinite`;
+
+                particlesContainer.appendChild(particle);
+            }
+
+            // Add keyframes for rise animation
+            const style = document.createElement('style');
+            style.innerHTML = `
+                @keyframes rise {
+                    0% {
+                        transform: translateY(0) rotate(0deg);
+                        opacity: 0;
+                    }
+                    10% {
+                        opacity: var(--opacity);
+                    }
+                    90% {
+                        opacity: var(--opacity);
+                    }
+                    100% {
+                        transform: translateY(-100vh) rotate(360deg);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
         });
     </script>
 </head>
 <body class="bg-dark-950 text-gray-200 min-h-screen">
+    <!-- Animated background blobs -->
+    <div class="animated-blob"></div>
+    <div class="animated-blob"></div>
+    <div class="animated-blob"></div>
+<!--    <div class="animated-blob"></div>-->
     <!-- Overlay for mobile menu -->
     <div id="overlay" class="fixed inset-0 z-40 bg-black opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
@@ -147,10 +312,10 @@
                 <!-- Desktop Navigation -->
                 <div class="hidden md:block">
                     <div class="ml-10 flex items-center space-x-8">
-                        <a href="#" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">Home</a>
+                        <a href="#home" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">Home</a>
                         <a href="#video-feed" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">Stream</a>
                         <a href="#about" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">About</a>
-                        <a href="#features" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">Features</a>
+                        <a href="https://linktr.ee/_Oculosaurus" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">LinkTree</a>
                         <a href="https://github.com/nsdevoss/cs499" class="text-gray-300 hover:text-white font-medium transition-colors duration-200">GitHub</a>
                     </div>
                 </div>
@@ -182,10 +347,9 @@
                 </div>
             </div>
             <div class="pt-2 pb-3 space-y-1">
-                <a href="#hero" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-white bg-dark-700">Home</a>
+                <a href="#home" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-white bg-dark-700">Home</a>
                 <a href="#video-feed" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">Stream</a>
                 <a href="#about" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">About</a>
-                <a href="#features" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">Features</a>
                 <a href="https://github.com/nsdevoss/cs499" onclick="toggleMenu()" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-dark-700">GitHub</a>
             </div>
             <div class="pt-4 pb-3 border-t border-dark-600">
@@ -198,9 +362,9 @@
         </div>
     </header>
 
-    <!-- Hero Section -->
+    <!-- Tailwind CSS Hero Section -->
     <section class="relative pt-16 overflow-hidden">
-        <div class="bg-gradient-to-b from-accent-primary/5 to-transparent absolute inset-0 z-0"></div>
+        <div id="home" class="bg-gradient-to-b from-accent-primary/5 to-transparent absolute inset-0 z-0"></div>
 
         <!-- Animated gradient blob in background -->
         <div class="absolute -left-40 -top-40 opacity-20 z-0">
@@ -255,29 +419,29 @@
                         <div class="text-sm text-gray-400">
                             <span id="resolution">{{dimensions}}</span> • <span id="fps">30 FPS</span>
                         </div>
-                        <div class="flex space-x-2">
-                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m0 0l-2.828 2.828m0 0a9 9 0 010-12.728m2.828 2.828l-2.828-2.828" />
-                                </svg>
-                            </button>
-                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            </button>
-                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            </button>
+<!--                        <div class="flex space-x-2">-->
+<!--                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">-->
+<!--                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">-->
+<!--                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m0 0l-2.828 2.828m0 0a9 9 0 010-12.728m2.828 2.828l-2.828-2.828" />-->
+<!--                                </svg>-->
+<!--                            </button>-->
+<!--                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">-->
+<!--                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">-->
+<!--                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />-->
+<!--                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />-->
+<!--                                </svg>-->
+<!--                            </button>-->
+<!--                            <button class="p-2 bg-dark-800 hover:bg-dark-700 rounded-full transition-colors">-->
+<!--                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">-->
+<!--                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />-->
+<!--                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />-->
+<!--                                </svg>-->
+<!--                            </button>-->
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+<!--        </div>-->
     </section>
 
     <!-- About Section -->
