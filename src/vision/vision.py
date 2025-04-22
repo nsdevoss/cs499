@@ -26,8 +26,9 @@ class Vision:
         self.info_queue = info_queue
         self.vision_args = vision_args
         self.scale = scale
-        self.percent_scaled_down = vision_args.get("percent_scaled_down")
+        self.percent_scaled_down = vision_args.get("distance_args").get("percent_border_scaled_down")
         self.calibration_file = os.path.join(lc.CALIBRATION_DIR, self.vision_args.get("calibration_file"))
+        self.model_file = os.path.join(lc.MODEL_DIR, self.vision_args.get("model_file"))
         # Depth args
         self.display_frame = None
         self.cam_matrix = None
@@ -39,6 +40,8 @@ class Vision:
         self.map2_y = None
         self.Q = None
 
+        self.point_cloud_refresh_rate = self.vision_args.get("3d_render_args").get("refresh_rate")
+
         self.highlight_min_dist = self.vision_args.get("distance_args").get("min_dist")
         self.highlight_max_dist = self.vision_args.get("distance_args").get("max_dist")
         self.highlight_color = tuple(int(c) for c in self.vision_args.get("distance_args").get("color"))
@@ -48,13 +51,10 @@ class Vision:
         self.object_detect_queue = object_detect_queue
         self.object_queue = deque(maxlen=50)
         self.previous_objects = []
-        self.object_persistence_threshold = self.vision_args.get("object_persistence_threshold")
+        self.object_persistence_threshold = self.vision_args.get("distance_args").get("object_persistence_threshold")
 
     def start(self):
-        if self.vision_args.get("enabled"):
-            self.depth_estimation()
-        else:
-            return
+        self.depth_estimation()
 
     def depth_estimation(self):
         try:
@@ -94,7 +94,6 @@ class Vision:
             contour_map = np.zeros_like(left_frame)
 
             visualization_time = time.time()
-            start_time = time.time()
             while True:
                 try:
                     frame = self.frame_queue.get()
@@ -176,13 +175,10 @@ class Vision:
                             contour_map = np.zeros_like(left_frame)
                             contour_refresh_map = end_time
 
-                        if end_time - visualization_time >= self.vision_args.get("refresh_rate") and self.info_queue is not None:
+                        if end_time - visualization_time >= self.point_cloud_refresh_rate and self.info_queue is not None:
                             self.info_queue.put((left, points_3d, valid_dist_mask))
                             visualization_time = end_time
 
-                        now = time.time()
-                        # print(f"Time taken VISION: {(now - start_time) * 1000}")
-                        start_time = now
                         del frame, disp_colored, display_frame
 
                 except queue.Empty:
@@ -379,3 +375,6 @@ class Vision:
         distance_map[~valid_mask] = np.nan  # And we fill in the matrix with valid values
 
         return distance_map, points_3d, valid_mask
+
+    def determine_object(self):
+        pass

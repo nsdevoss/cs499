@@ -21,12 +21,10 @@
     "scale": 0.2
   },
   "vision_arguments": {
-    "enabled": true,
-    "depth_map_capture": true,
-    "refresh_rate": 5,
-    "object_persistence_threshold": 5,
-    "percent_scaled_down": 0.2,
+    "3d_render_enabled": true,
+    "object_determination_enabled": false,
     "calibration_file": "calib_50/calibration_50.npz",
+    "model_file": "small.pth",
     "StereoSGBM_args": {
       "minDisparity": 0,
       "numDisparities": 32,
@@ -41,7 +39,12 @@
       "min_dist": 0,
       "color": [12,237,16],
       "alpha": 0.75,
-      "min_area": 800
+      "min_area": 800,
+      "object_persistence_threshold": 5,
+      "percent_border_scaled_down": 0.2
+    },
+    "3d_render_args": {
+      "refresh_rate": 5
     }
   }
 }

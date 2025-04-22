@@ -4,13 +4,13 @@ from src.pi import emulator
 from src.utils import utils
 from datetime import datetime
 from src.utils.config import Config
-from src.utils.utils import execute_pi_client
-from src.server.camera_server import StreamCameraServer
-from src.server.visualization_server import VisualizationServer
-from src.server.app_server import AppCommunicationServer
-from src.WebServer.web_server import WebServerDisplay
-from src.server.logger import server_logger
 from src.vision.vision import Vision
+from src.server.logger import server_logger
+from src.utils.utils import execute_pi_client
+from src.WebServer.web_server import WebServerDisplay
+from src.server.camera_server import StreamCameraServer
+from src.server.app_server import AppCommunicationServer
+from src.server.visualization_server import VisualizationServer
 
 
 processes = []
@@ -73,15 +73,14 @@ def main(camera_server_args, pi_args, emulator_args, vision_args):
     info_queue = None  # This is for the other computer to use
     object_detect_queue = None
 
-    if vision_args.get("enabled"):
-        vision_queue = multiprocessing.Queue()
-        display_queue = multiprocessing.Queue()
-        object_detect_queue = multiprocessing.Queue()
-        if vision_args.get("depth_map_capture"):
-            info_queue = multiprocessing.Queue()
+    vision_queue = multiprocessing.Queue()
+    display_queue = multiprocessing.Queue()
+    object_detect_queue = multiprocessing.Queue()
+    if vision_args.get("3d_render_enabled"):
+        info_queue = multiprocessing.Queue()
 
     ###### Start Visualization Server ######
-    if vision_args.get("depth_map_capture"):
+    if vision_args.get("3d_render_enabled"):
         server_logger.get_logger().info(f"Starting visualization server on port: 9002")
         visualization_server_process = multiprocessing.Process(target=start_visualization_process, args=(info_queue,))
         visualization_server_process.start()

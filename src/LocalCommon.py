@@ -3,6 +3,7 @@ import os
 #### OS Paths ####
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 CALIBRATION_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../calibrations"))
+MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../models"))
 
 #### Networkk Constants ####
 MAX_UDP_PACKET = 65536

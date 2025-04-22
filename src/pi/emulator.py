@@ -1,11 +1,11 @@
-import socket
-import cv2
 import os
-import struct
-import ipaddress
+import cv2
 import time
-import concurrent.futures
+import struct
+import socket
 import platform
+import ipaddress
+import concurrent.futures
 import src.LocalCommon as lc
 from src.utils import utils
 from src.server.logger import client_logger
