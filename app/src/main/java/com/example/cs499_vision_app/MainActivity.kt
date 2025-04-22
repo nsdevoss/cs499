@@ -129,7 +129,7 @@ private val connectionReady = CompletableDeferred<Unit>()
 @Composable
 fun MainScreen(){
     // automatically select just vibrate
-    var selectedOption by remember {mutableStateOf("Vibrate")}
+    val selectedOption = remember {mutableStateOf("Vibrate")}
     var serverMessage by remember { mutableStateOf("no message yet")}
     val context = LocalContext.current
 
@@ -149,13 +149,13 @@ fun MainScreen(){
 
 
 
-            SelectionMenu(selectedOption) {selectedOption = it}
+            SelectionMenu(selectedOption.value) {selectedOption.value = it}
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
-                    when(selectedOption) {
+                    when(selectedOption.value) {
                         "Vibrate" -> triggerVibration(context)
                         "Sound" -> playSound(context)
                         "Both" -> {
@@ -170,7 +170,7 @@ fun MainScreen(){
 
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = {
-                connect(context){
+                connect(context, selectedOption){
                     msg->serverMessage =msg
                 }
             }) {
@@ -222,15 +222,15 @@ fun SelectionMenu(selectedOption: String, onOptionSelected: (String) -> Unit) {
                     .selectable(
 
                         selected = (text == selectedOption),
-                        onClick = {onOptionSelected(text)},
+                        onClick = { onOptionSelected(text) },
 
-                    )
+                        )
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
                     )
             { RadioButton(
                 selected = (text == selectedOption),
-                onClick = null
+                onClick = { onOptionSelected(text) }
 
             )
             Text(text = text,
@@ -282,6 +282,7 @@ fun playSound(context: Context){
 }
 
 fun connect(context: Context,
+            selectedOption: State<String>,
             onMessageReceived:(String) -> Unit
 
 ) {
@@ -302,11 +303,13 @@ fun connect(context: Context,
         Toast.makeText(context, "Server message: $txtFromServer", Toast.LENGTH_LONG).show()
         onMessageReceived(txtFromServer)
 
-        readMessagesInBackground(context, onMessageReceived)
+        readMessagesInBackground(context,selectedOption, onMessageReceived)
     }
 }
 
-fun readMessagesInBackground(context: Context, onMessageReceived: (String) -> Unit) {
+fun readMessagesInBackground(context: Context,
+                             selectedOption: State<String>,
+                             onMessageReceived: (String) -> Unit) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
             connectionReady.await()
@@ -314,7 +317,14 @@ fun readMessagesInBackground(context: Context, onMessageReceived: (String) -> Un
                 val msg = brInput.readLine() ?: break
                 Log.d("Server Message", "no string")
                 withContext(Dispatchers.Main) {
-                    triggerVibration(context)
+
+                    when(selectedOption.value){
+                        "Vibrate" -> triggerVibration(context)
+                        "Sound" -> playSound(context)
+                        "Both" -> {triggerVibration(context)
+                                    playSound(context)}
+                    }
+
                     delay(3000L)
                     onMessageReceived(msg)
                 }
