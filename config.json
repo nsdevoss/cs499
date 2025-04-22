@@ -24,7 +24,7 @@
     "3d_render_enabled": true,
     "object_determination_enabled": false,
     "calibration_file": "calib_50/calibration_50.npz",
-    "model_file": "small.pth",
+    "model_file": "yolo11n.pt",
     "StereoSGBM_args": {
       "minDisparity": 0,
       "numDisparities": 32,

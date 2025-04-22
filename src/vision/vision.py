@@ -6,6 +6,7 @@ import os
 import uuid
 import numpy as np
 import src.LocalCommon as lc
+from ultralytics import YOLO
 from src.server.logger import server_logger
 from collections import deque
 
@@ -52,6 +53,9 @@ class Vision:
         self.object_queue = deque(maxlen=50)
         self.previous_objects = []
         self.object_persistence_threshold = self.vision_args.get("distance_args").get("object_persistence_threshold")
+
+        if self.vision_args.get("object_determination_enabled"):
+            self.model = YOLO(self.vision_args.get("model_file"))
 
     def start(self):
         self.depth_estimation()
