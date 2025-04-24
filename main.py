@@ -3,10 +3,12 @@ import src.LocalCommon as lc
 from src.pi import emulator
 from src.utils import utils
 from datetime import datetime
+from multiprocessing import Manager
 from src.utils.config import Config
 from src.vision.vision import Vision
 from src.server.logger import server_logger
 from src.utils.utils import execute_pi_client
+from src.vision.object_detect import ObjectDetector
 from src.WebServer.web_server import WebServerDisplay
 from src.server.camera_server import StreamCameraServer
 from src.server.app_server import AppCommunicationServer
@@ -26,13 +28,12 @@ def start_camera_server(vision_queue, camera_server_args, emulator_enabled):
     local_server.receive_video_stream()
 
 
-def start_app_server(object_detect_queue):
-    app_server = AppCommunicationServer(object_detect_queue)
+def start_app_server(detected_dist_object_queue):
+    app_server = AppCommunicationServer(detected_dist_object_queue)
     app_server.connect_to_app()
 
-def start_webserver(display_queue, scale):
-    frame_dimensions = str(f"{int(lc.DEFAULT_FRAME_DIMENSIONS[1] * scale)}x{int(lc.DEFAULT_FRAME_DIMENSIONS[0] * scale * 3)}")
-    web_server = WebServerDisplay(display_queue=display_queue, frame_dimensions=frame_dimensions)
+def start_webserver(display_queue, shared_data, shared_fps):
+    web_server = WebServerDisplay(display_queue=display_queue, shared_data=shared_data, shared_fps=shared_fps)
     web_server.run()
 
 def start_emulator(ip_addr, emulator_args, camera_server_args):
@@ -50,36 +51,55 @@ def start_emulator(ip_addr, emulator_args, camera_server_args):
         client.send_video()
 
 
-def start_vision_process(vision_queue, display_queue, object_detect_queue, info_queue, vision_args, scale):
-    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, info_queue=info_queue, object_detect_queue=object_detect_queue,vision_args=vision_args, scale=scale)
+def start_vision_process(vision_queue, display_queue, detected_dist_object_queue, info_queue, yolo_input_queue, vision_args, scale, shared_fps):
+    vision = Vision(frame_queue=vision_queue, display_queue=display_queue, info_queue=info_queue, object_detect_queue=detected_dist_object_queue,yolo_input_queue=yolo_input_queue,vision_args=vision_args, scale=scale, shared_fps=shared_fps)
     vision.start()
 
 def start_visualization_process(info_queue):
     visualization_server = VisualizationServer(info_queue)
     visualization_server.connect()
 
-# def start_yolo_process():
-#     pass
+def start_yolo_process(yolo_args, input_queue, shared_data):
+    yolo_detector = ObjectDetector(yolo_args, input_queue, shared_data)
+    yolo_detector.start()
 
 def main(camera_server_args, pi_args, emulator_args, vision_args):
     global processes, ip_addr
+    shared_fps = multiprocessing.Value('i', 0)
+    manager = Manager()
+    shared_data = manager.dict()
+    shared_data["frame"] = None
+    shared_data["boxes"] = None
+    shared_data["scores"] = None
+    shared_data["labels"] = None
     start_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     logs_to_zip = ["server.log", "webserver.log"]
     ip_addr = utils.get_ip_address()
     print(ip_addr)
 
-    # I am going to assume we will always run vision and never display only the raw frame
-    display_queue = None  # Use for play process for debug now, SHOULD be used by the Webserver on release
-    vision_queue = None  # Use for Vision class
-    info_queue = None  # This is for the other computer to use
-    object_detect_queue = None
+    display_queue = None  # Vision processing -> Webserver
+    vision_queue = None  # Raw server frame -> Vision processing
+    info_queue = None  # Vision processing -> 3D visualization
+    detected_dist_object_queue = None  # Vision dist processing -> App Server
+
+    detected_object_frame_queue = None  # Vision processing -> Object Detector
+    yolo_input_frame = None  # Object_detector -> Webserver
 
     vision_queue = multiprocessing.Queue()
     display_queue = multiprocessing.Queue()
-    object_detect_queue = multiprocessing.Queue()
+    detected_dist_object_queue = multiprocessing.Queue()
     if vision_args.get("3d_render_enabled"):
         info_queue = multiprocessing.Queue()
+    if vision_args.get("yolo_arguments").get("enabled"):
+        yolo_input_frame = multiprocessing.Queue()
+
+        ###### Start Yolo Detector ######
+        server_logger.get_logger().info(f"Starting object detector process")
+        yolo_detector_process = multiprocessing.Process(target=start_yolo_process, args=(vision_args.get("yolo_arguments"), yolo_input_frame, shared_data))
+        yolo_detector_process.start()
+        server_logger.get_logger().info(f"Started yolo detector process with pid: {yolo_detector_process.pid}")
+        processes.append(yolo_detector_process)
 
     ###### Start Visualization Server ######
     if vision_args.get("3d_render_enabled"):
@@ -90,16 +110,12 @@ def main(camera_server_args, pi_args, emulator_args, vision_args):
         processes.append(visualization_server_process)
 
     ###### Web Server start process ######
-    webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,camera_server_args.get("scale")))
+    webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,shared_data, shared_fps))
     webserver_process.start()
     processes.append(webserver_process)
 
-    # object_process = multiprocessing.Process(target=start_yolo_process)
-    # object_process.start()
-    # processes.append(object_process)
-
     ###### Vision start process ######
-    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, object_detect_queue, info_queue,vision_args, camera_server_args.get("scale")))
+    vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, detected_dist_object_queue, info_queue, yolo_input_frame ,vision_args, camera_server_args.get("scale"), shared_fps))
     vision_process.start()
     server_logger.get_logger().info(f"Started vision process with pid: {vision_process.pid}")
     processes.append(vision_process)
@@ -113,7 +129,7 @@ def main(camera_server_args, pi_args, emulator_args, vision_args):
 
     ###### App Server start process ######
     server_logger.get_logger().info(f"Starting app server on port: 9001")
-    app_server_process = multiprocessing.Process(target=start_app_server, args=(object_detect_queue,))
+    app_server_process = multiprocessing.Process(target=start_app_server, args=(detected_dist_object_queue,))
     app_server_process.start()
     server_logger.get_logger().info(f"Started app server process with pid: {app_server_process.pid}")
     processes.append(app_server_process)

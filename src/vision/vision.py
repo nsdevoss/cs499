@@ -3,7 +3,6 @@ import time
 import cv2
 import queue
 import os
-import uuid
 import numpy as np
 import src.LocalCommon as lc
 from src.server.logger import server_logger
@@ -20,12 +19,14 @@ class Vision:
     :param display_queue: This is the global queue used for DISPLAYING THE FRAMES ONLY!!!
     """
 
-    def __init__(self, frame_queue, display_queue, info_queue, object_detect_queue, vision_args, scale):
+    def __init__(self, frame_queue, display_queue, info_queue, object_detect_queue, yolo_input_queue, vision_args, scale, shared_fps):
         self.frame_queue = frame_queue
         self.display_queue = display_queue
         self.info_queue = info_queue
         self.vision_args = vision_args
+        self.yolo_input_queue = yolo_input_queue
         self.scale = scale
+        self.shared_fps = shared_fps
         self.percent_scaled_down = vision_args.get("distance_args").get("percent_border_scaled_down")
         self.calibration_file = os.path.join(lc.CALIBRATION_DIR, self.vision_args.get("calibration_file"))
         self.model_file = os.path.join(lc.MODEL_DIR, self.vision_args.get("model_file"))
@@ -94,6 +95,8 @@ class Vision:
             contour_map = np.zeros_like(left_frame)
 
             visualization_time = time.time()
+            start_time = time.time()
+            frame_count = 0
             while True:
                 try:
                     frame = self.frame_queue.get()
@@ -172,6 +175,12 @@ class Vision:
                             self.display_queue.put(display_frame)
 
                         end_time = time.time()
+                        frame_count += 1
+                        if end_time - start_time >= 30.0:
+                            self.shared_fps = frame_count / (end_time - start_time)
+                            frame_count = 0
+                            start_time = end_time
+                            server_logger.get_logger.info(f"VISION FPS: {self.shared_fps:.2f}")
                         if end_time - contour_refresh_map >= 10.0:
                             contour_map = np.zeros_like(left_frame)
                             contour_refresh_map = end_time
@@ -360,6 +369,8 @@ class Vision:
                                       frame.shape[1] - math.floor(frame.shape[1] * self.percent_scaled_down * 0.5),
                                       frame.shape[0] - math.floor(frame.shape[0] * self.percent_scaled_down * 0.5)),
                                   (0, 255, 0), 1)
+                    if self.yolo_input_queue is not None:
+                        self.yolo_input_queue.put(frame)
 
                 except queue.Full:
                     server_logger.get_logger().warning("object_detect_queue is full. Dropping object.")

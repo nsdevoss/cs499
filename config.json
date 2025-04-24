@@ -1,17 +1,17 @@
 {
   "emulator_arguments": {
-    "enabled": true,
+    "enabled": false,
     "stream_enabled": false,
     "video_name": "flag1",
-    "encode_quality": 70
+    "encode_quality": 10
   },
   "pi_arguments": {
-    "hostname": "192.168.1.159",
+    "hostname": "172.24.239.16",
     "port": 22,
     "username": "uab.edu",
     "password": "pi",
     "fps": 30,
-    "encode_quality": 70
+    "encode_quality": 50
   },
   "camera_server_arguments": {
     "port": 9000,
@@ -45,6 +45,26 @@
     },
     "3d_render_args": {
       "refresh_rate": 5
+    },
+    "yolo_arguments": {
+      "enabled": false,
+      "conf_threshold": 0.8,
+      "iou_threshold": 0.45,
+      "model_file": "yolo11n.onnx",
+      "frame_skip": 5,
+      "input_size": [640, 640],
+      "class_names": [
+            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+            "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+            "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack",
+            "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
+            "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
+            "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+            "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
+            "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse",
+            "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
+            "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+        ]
     }
   }
 }

@@ -19,9 +19,16 @@ def frame_producer(display_queue):
         time.sleep(0.01)
 
 class WebServerDisplay:
-    def __init__(self, display_queue, frame_dimensions, host="0.0.0.0", port=8080):
+    def __init__(self, display_queue, shared_data, shared_fps, host="0.0.0.0", port=8080):
         self.display_queue = display_queue
-        self.frame_dimensions = frame_dimensions
+        self.shared_data = shared_data
+        self.shared_fps = shared_fps
+
+        while True:
+            frame = display_queue.get()
+            if frame is not None:
+                break
+        self.frame_dimensions = str(f"{int(frame.shape[1])}x{int(frame.shape[0])}")
         self.logger = webserver_logger.get_logger()
         self.host = host
         self.port = port
