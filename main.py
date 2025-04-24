@@ -1,5 +1,4 @@
 import multiprocessing
-import src.LocalCommon as lc
 from src.pi import emulator
 from src.utils import utils
 from datetime import datetime
@@ -13,6 +12,7 @@ from src.WebServer.web_server import WebServerDisplay
 from src.server.camera_server import StreamCameraServer
 from src.server.app_server import AppCommunicationServer
 from src.server.visualization_server import VisualizationServer
+from src.server.visualization_client import VisualizationClient
 
 
 processes = []
@@ -59,6 +59,10 @@ def start_visualization_process(info_queue):
     visualization_server = VisualizationServer(info_queue)
     visualization_server.connect()
 
+def start_visualization_client(server_ip, port):
+    client = VisualizationClient(server_ip, port)
+    client.run()
+
 def start_yolo_process(yolo_args, input_queue, shared_data):
     yolo_detector = ObjectDetector(yolo_args, input_queue, shared_data)
     yolo_detector.start()
@@ -89,7 +93,7 @@ def main(camera_server_args, pi_args, emulator_args, vision_args):
     vision_queue = multiprocessing.Queue()
     display_queue = multiprocessing.Queue()
     detected_dist_object_queue = multiprocessing.Queue()
-    if vision_args.get("3d_render_enabled"):
+    if vision_args.get("3d_render_args").get("enabled"):
         info_queue = multiprocessing.Queue()
     if vision_args.get("yolo_arguments").get("enabled"):
         yolo_input_frame = multiprocessing.Queue()
@@ -102,12 +106,19 @@ def main(camera_server_args, pi_args, emulator_args, vision_args):
         processes.append(yolo_detector_process)
 
     ###### Start Visualization Server ######
-    if vision_args.get("3d_render_enabled"):
+    if vision_args.get("3d_render_args").get("enabled"):
         server_logger.get_logger().info(f"Starting visualization server on port: 9002")
         visualization_server_process = multiprocessing.Process(target=start_visualization_process, args=(info_queue,))
         visualization_server_process.start()
         server_logger.get_logger().info(f"Started visualization server process with pid: {visualization_server_process.pid}")
         processes.append(visualization_server_process)
+        if vision_args.get("3d_render_args").get("run_locally"):
+            server_logger.get_logger().info(f"Starting local visualization client")
+            visualization_client_process = multiprocessing.Process(target=start_visualization_client, args=(ip_addr, 9002))
+            visualization_client_process.start()
+            server_logger.get_logger().info(f"Started local visualization client with pid: {visualization_client_process.pid}")
+            processes.append(visualization_client_process)
+
 
     ###### Web Server start process ######
     webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,shared_data, shared_fps))

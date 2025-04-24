@@ -21,8 +21,6 @@
     "scale": 0.2
   },
   "vision_arguments": {
-    "3d_render_enabled": true,
-    "object_determination_enabled": false,
     "calibration_file": "calib_50/calibration_50.npz",
     "model_file": "yolo11n.pt",
     "StereoSGBM_args": {
@@ -44,7 +42,9 @@
       "percent_border_scaled_down": 0.2
     },
     "3d_render_args": {
-      "refresh_rate": 5
+      "enabled": true,
+      "run_locally": true,
+      "refresh_rate": 15
     },
     "yolo_arguments": {
       "enabled": false,
