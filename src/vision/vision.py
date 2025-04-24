@@ -402,5 +402,54 @@ class Vision:
 
         return distance_map, points_3d, valid_mask
 
+    from ultralytics import YOLO
+    import os
+    import cv2
+    import numpy as np
+
     def determine_object(self):
-        pass
+
+        model = YOLO(self.model_path)
+
+        image_paths = [
+            os.path.join(self.image_folder, f)
+            for f in os.listdir(self.image_folder)
+            if f.lower().endswith(".jpg")
+        ]
+
+        if not image_paths:
+            raise ValueError(f"No jpg images found in: {self.image_folder}")
+
+        # Run inference and stream results
+        results = model(image_paths, stream=True)
+
+        all_stats = []
+
+        for result in results:
+            img_array = result.plot()  # Annotated image as NumPy array
+            cv2.imshow("YOLO Result", img_array)
+
+            stats = {
+                "boxes": result.boxes.xyxy.tolist() if result.boxes else [],
+                "scores": result.boxes.conf.tolist() if result.boxes else [],
+                "classes": result.boxes.cls.tolist() if result.boxes else [],
+                "masks": result.masks.data.tolist() if result.masks else [],
+                "keypoints": result.keypoints.data.tolist() if result.keypoints else [],
+                "probs": result.probs.tolist() if result.probs is not None else [],
+                "obb": result.obb.tolist() if result.obb else []
+            }
+
+            print("\nDetection Stats:")
+            for key, value in stats.items():
+                print(f"{key}: {value}")
+
+            all_stats.append(stats)
+
+            # Wait for a key press to continue or 'q' to quit
+            if cv2.waitKey(0) & 0xFF == ord('q'):
+                break
+
+        cv2.destroyAllWindows()
+        return all_stats
+
+    pass
