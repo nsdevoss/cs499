@@ -1,0 +1,4 @@
+Checkerboard Dimensions: 8x11
+Square Sizes: 20mm
+Threshold: 0.2
+Image size: 50
