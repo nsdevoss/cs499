@@ -58,6 +58,8 @@ def start_visualization_process(info_queue):
     visualization_server = VisualizationServer(info_queue)
     visualization_server.connect()
 
+# def start_yolo_process():
+#     pass
 
 def main(camera_server_args, pi_args, emulator_args, vision_args):
     global processes, ip_addr
@@ -91,6 +93,10 @@ def main(camera_server_args, pi_args, emulator_args, vision_args):
     webserver_process = multiprocessing.Process(target=start_webserver, args=(display_queue,camera_server_args.get("scale")))
     webserver_process.start()
     processes.append(webserver_process)
+
+    # object_process = multiprocessing.Process(target=start_yolo_process)
+    # object_process.start()
+    # processes.append(object_process)
 
     ###### Vision start process ######
     vision_process = multiprocessing.Process(target=start_vision_process, args=(vision_queue, display_queue, object_detect_queue, info_queue,vision_args, camera_server_args.get("scale")))

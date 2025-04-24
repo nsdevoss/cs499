@@ -6,7 +6,6 @@ import os
 import uuid
 import numpy as np
 import src.LocalCommon as lc
-from ultralytics import YOLO
 from src.server.logger import server_logger
 from collections import deque
 
@@ -53,9 +52,6 @@ class Vision:
         self.object_queue = deque(maxlen=50)
         self.previous_objects = []
         self.object_persistence_threshold = self.vision_args.get("distance_args").get("object_persistence_threshold")
-
-        if self.vision_args.get("object_determination_enabled"):
-            self.model = YOLO(self.vision_args.get("model_file"))
 
     def start(self):
         self.depth_estimation()
@@ -135,10 +131,11 @@ class Vision:
                             np.uint8)
 
                         distance_map, points_3d, valid_dist_mask = self.disparity_to_distance(filtered_disp)
-                        highlighted_frame, contour_centers, contour_map, object_in_frame = self.highlight_distance_range(left,
-                                                                                                        distance_map,
-                                                                                                        contour_map)
-                            
+                        highlighted_frame, contour_centers, contour_map, contour_edges, object_in_frame = self.highlight_distance_range(
+                            left,
+                            distance_map,
+                            contour_map)
+
                         disp_colored = cv2.applyColorMap(disp_normalized.astype(np.uint8), cv2.COLORMAP_INFERNO)
 
                         if display_frame is None or display_frame.shape[1] != highlighted_frame.shape[1] + \
@@ -169,7 +166,7 @@ class Vision:
                         :left.shape[1]] = left_frame
                         display_frame[bottom_y_offset:bottom_y_offset + right.shape[0],
                         highlighted_frame.shape[1]:highlighted_frame.shape[1] + right.shape[
-                            1]] = right_frame
+                            1]] = contour_edges
 
                         if self.display_queue is not None:
                             self.display_queue.put(display_frame)
@@ -271,6 +268,7 @@ class Vision:
         highlight_mask = np.zeros_like(range_mask)
         highlight_mask_colored = np.zeros_like(frame)
         highlight_annotations = np.zeros_like(frame)
+        contour_edges = np.zeros_like(frame)
         contour_centers = np.zeros_like(frame)
         object_found = False
         current_objects = []
@@ -304,7 +302,8 @@ class Vision:
                         })
 
                         object_found = True
-                        contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=4, color=(0, 255, 0), thickness=-1)
+                        contour_centers = cv2.circle(contour_centers, (Cx, Cy), radius=4, color=(0, 255, 0),
+                                                     thickness=-1)
                         contour_map = cv2.circle(contour_map, (Cx, Cy), radius=3, color=(0, 255, 0), thickness=-1)
 
                 cv2.drawContours(highlight_mask, [contour], -1, 255, -1)
@@ -350,13 +349,25 @@ class Vision:
             if self.object_detect_queue is not None and obj.get('persistence', 0) >= self.object_persistence_threshold:
                 try:
                     self.object_detect_queue.put_nowait(object_info)
-                    cv2.putText(highlight_annotations, f"{distance:.2f}m", (cx, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    cv2.putText(highlight_annotations, f"{distance:.2f}m", (cx, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                                (255, 255, 255), 2)
                     cv2.drawContours(highlight_annotations, [obj['contour']], -1, self.highlight_color, 1)
                     cv2.rectangle(highlight_annotations, (x, y), (x + w, y + h), (255, 255, 255), 2)
+
+                    cv2.drawContours(contour_edges, [obj['contour']], -1, self.highlight_color, 1)
+                    cv2.rectangle(contour_edges, (int(frame.shape[1] * self.percent_scaled_down * 0.5),
+                                                  int(frame.shape[0] * self.percent_scaled_down * 0.5)), (
+                                      frame.shape[1] - math.floor(frame.shape[1] * self.percent_scaled_down * 0.5),
+                                      frame.shape[0] - math.floor(frame.shape[0] * self.percent_scaled_down * 0.5)),
+                                  (0, 255, 0), 1)
+
                 except queue.Full:
                     server_logger.get_logger().warning("object_detect_queue is full. Dropping object.")
 
-        cv2.rectangle(highlight_annotations, (int(frame.shape[1] * self.percent_scaled_down * 0.5),int(frame.shape[0] * self.percent_scaled_down * 0.5)),(frame.shape[1] - math.floor(frame.shape[1]*self.percent_scaled_down * 0.5),frame.shape[0] - math.floor(frame.shape[0]*self.percent_scaled_down * 0.5)), (0, 255, 0), 2)
+        cv2.rectangle(highlight_annotations, (
+        int(frame.shape[1] * self.percent_scaled_down * 0.5), int(frame.shape[0] * self.percent_scaled_down * 0.5)), (
+                      frame.shape[1] - math.floor(frame.shape[1] * self.percent_scaled_down * 0.5),
+                      frame.shape[0] - math.floor(frame.shape[0] * self.percent_scaled_down * 0.5)), (0, 255, 0), 2)
         highlight_mask_colored[highlight_mask > 0] = self.highlight_color
         highlight_combined = cv2.add(highlight_mask_colored, highlight_annotations)
         blended_frame = cv2.addWeighted(highlight_combined, self.highlight_alpha, frame, 1 - self.highlight_alpha, 0)
@@ -364,7 +375,7 @@ class Vision:
                                                   1 - self.highlight_alpha, 0)
 
         self.previous_objects = current_objects
-        return blended_frame, blended_contour_centers, contour_map, object_found
+        return blended_frame, blended_contour_centers, contour_map, contour_edges, object_found
 
     def disparity_to_distance(self, disparity):
         """

@@ -37,8 +37,9 @@ class AppCommunicationServer(SocketServer):
                 if self.object_detect_queue is not None and not self.object_detect_queue.empty():
                     entry = self.object_detect_queue.get()
                     # json_entry = json.dumps(str(entry))
-                    msg = f"There is an object with distance: {entry.get('distance'):.2f}m, persistence: {entry.get('persistence')}, center: {entry.get('center')}\n"
+                    msg = f"Object at distance: {entry.get('distance'):.2f}m, center: {entry.get('center')}, position: {entry.get("position")}, persistence: {entry.get('persistence')}\n"
                     conn.send(msg.encode())
+                    # conn.send(json_entry.encode())
                     self.log_writer.info(f"Sent message {msg} to {addr}")
                 else:
                     continue
