@@ -11,12 +11,30 @@ lock = threading.Lock()
 
 def frame_producer(display_queue):
     global latest_frame
+
+    # Setup video writer
+    frame_width, frame_height = 640, 480  # Make sure this matches the actual frame dimensions
+    fps = 30
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Or 'mp4v' for .mp4
+    out = cv2.VideoWriter('output.avi', fourcc, fps, (frame_width, frame_height))
+
     while True:
         disp = display_queue.get()
+        if disp is None:
+            break  # Allows clean shutdown if needed
+
+        # Write frame to video
+        out.write(disp)
+
+        # Prepare frame for web stream
         ret, buffer = cv2.imencode('.jpg', disp)
         with lock:
             latest_frame = buffer.tobytes()
+
         time.sleep(0.01)
+
+    out.release()  # Clean up when done
+
 
 class WebServerDisplay:
     def __init__(self, display_queue, shared_data, shared_fps, host="0.0.0.0", port=8080):
